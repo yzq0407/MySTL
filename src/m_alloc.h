@@ -7,10 +7,15 @@
 #include <new>   //for placement new
 #include <cstdlib> //for exit
 #include <iostream> //for cerr
+#include <climits>  //for UINT_MAX
 
 namespace my_stl {
+
+    //this is a naive implementation of the allocator function
+    //just wrap the new and delete under the allocate and deallocate method
+    //which is quite similar to the simple_alloc class in SGI allocator
     template <class _Tp>
-    class allocator {
+    class naive_allocator {
         //by STL standard, these are the necessary interface for allocator
         public:
             //typename can be accessed using scope operator, but when used, need to 
@@ -25,7 +30,7 @@ namespace my_stl {
 
             //nested class template with only one data member
             template <class _Tp1> struct rebind{
-                typedef allocator<_Tp1> other;
+                typedef naive_allocator<_Tp1> other;
             };
             // auto generated 
             /*                 //constructor */
@@ -53,13 +58,13 @@ namespace my_stl {
                 pointer attempt_alloc = (pointer) (::operator new (n * (sizeof(_Tp))));
                 if (!attempt_alloc) {
                     std::cerr << "out of memory" << std::endl;
+                    exit(1);
                 }
                 return attempt_alloc;
             }
 
             //return all the memory allocated, n has to be the same as we run allocate
             inline void deallocate(pointer p, size_type n) {
-                //use placement delete
                 ::operator delete(p);
             }
 
@@ -74,5 +79,73 @@ namespace my_stl {
             //destroy this object
             inline void destroy(pointer p) {p -> ~_Tp();};
     };
+
+
+    //testing the naive allocator we can see that it is not doing very well, in SGI implementation
+    //the allocator is divided into two level: first level is using malloc and free to allocate 
+    //and manage memory, the second level(sub-allocator) is using complex memory pool
+    //
+    //--------------------------first level allocator: malloc_alloc---------------------------
+    class __malloc_alloc {
+        private:
+            //these are the handlers for out of memory
+            static void *oom_malloc(size_t);
+            static void *oom_realloc(void *, size_t);
+            //passed in to handle oom 
+            static void(* __malloc_alloc_oom_handler) ();
+
+        public: 
+            static void* allocate(size_t n) {
+                void* res = malloc(n);
+                if (!res) res = oom_malloc(n);
+                return res;
+            }
+
+            static void deallocate(void *p, size_t n) {
+                //use free directly to freeup memory
+                free(p);
+            }
+
+            static void* reallocate(void *p, size_t old_size, size_t new_size) {
+                void* res = realloc(p, new_size);
+                if (!res)   res = oom_malloc(new_size);
+                return res;
+            }
+
+            static void (*set_malloc_alloc_oom_handler(void (*handler)())) (){
+                void (* old) () = __malloc_alloc_oom_handler;
+                __malloc_alloc_oom_handler = handler;
+                return old;
+            }
+    };
+    
+    //default is null, means there are no handler for oom
+    void (*__malloc_alloc::__malloc_alloc_oom_handler) () = nullptr;
+
+    //implementation of all the handlers
+    void* __malloc_alloc::oom_malloc(size_t size) {
+        //just keep on looping to can the handler 
+        while (true) {
+            if (!__malloc_alloc_oom_handler) {
+                std::cerr << "out of memory" << std::endl;
+                exit(1);
+            }
+            (*__malloc_alloc_oom_handler)();
+            void* res = malloc(size);
+            if (!res)   return res;
+        }
+    }
+
+    void* __malloc_alloc::oom_realloc(void * p, size_t n) {
+        while (true) {
+            if (!__malloc_alloc_oom_handler) {
+                std::cerr << "out of memory" << std::endl;
+                exit(1);
+            }
+            (*__malloc_alloc_oom_handler)();
+            void* res = realloc(p, n);
+            if (!res)   return res;
+        }
+    }
 }
 #endif
