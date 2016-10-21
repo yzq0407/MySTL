@@ -6,6 +6,7 @@
 #include "../src/m_alloc.h"
 
 #define TEST_EPOCH 1000000
+#define __USE_MALLOC
 namespace my_stl {
 
     template<typename allocator>
@@ -55,7 +56,7 @@ namespace my_stl {
 int main() {
     //test if SGI STL use the malloc allocator
     #ifdef __USE_MALLOC
-    std::cout << "use malloc not defined" << std::endl;
+    std::cout << "use malloc defined" << std::endl;
     #else
     std::cout << "not using malloc" << std::endl;
     #endif
