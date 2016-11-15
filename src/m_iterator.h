@@ -9,6 +9,17 @@
 #include <cstddef>   //for std::ptrdiff_t
 namespace my_stl {
 
+    //a general iterator base class, we want all iterator to inherit from this class
+    template <typename Category, typename T, typename Distance = std::ptrdiff_t,
+        typename Pointer = T*, typename Reference = T&>
+    struct iterator {
+        typedef Category iterator_category;
+        typedef T value_type;
+        typedef Distance difference_type;
+        typedef Pointer pointer;
+        typedef Reference reference;
+    };
+
     //tag definition
     struct input_iterator_tag {};
 
@@ -55,9 +66,60 @@ namespace my_stl {
     };
 
     //functions
-    //
-    template <typename ForwardIterator, typename Distance>
-    void advance(ForwardIterator &it, Distance n);
+ 
+    //overloaded function1, for input iterator (basic type)
+    template <typename InputIterator, typename Distance>
+    inline void __advance(InputIterator &it, Distance n, input_iterator_tag) {
+        while (n--) ++it;
+    }
+
+    //overloaded function2, for bidirectional iterator (the distance can be negative)
+    template <typename BidirectionalIterator, typename Distance>
+    inline void __advance(BidirectionalIterator &it, Distance n, bidirectional_iterator_tag) {
+        if (n >= 0)
+            while (n--) ++it;
+        else
+            while (n++) --it;
+    }
+
+    //overloaded function3, for random access iterator, directly add the distance into the iterator
+    template <typename RandomAccessIterator, typename Distance>
+    inline void __advance(RandomAccessIterator &it, Distance n, random_access_iterator_tag) {
+        it += n;
+    }
+
+   //function to advance a iterator n steps
+    template <typename InputIterator, typename Distance>
+    void advance(InputIterator &it, Distance n) {
+        //simply call the helper function to determine which algorithm should we use
+        __advance(it, n, iterator_traits<InputIterator>::iterator_category());
+    }
+
+    //function to determine the distance between two iterators
+    //overload function1, for input iterator
+    template <typename InputIterator>
+    inline typename iterator_traits<InputIterator>::difference_type __distance(InputIterator first, 
+            InputIterator last, input_iterator_tag) {
+        typename iterator_traits<InputIterator>::difference_type n = 0;
+        while (first != last) {
+            ++first;
+            ++n;
+        }
+        return n;
+    }
+
+    //overload function2, for random access iterator
+    template <typename RandomAccessIterator>
+    inline typename iterator_traits<RandomAccessIterator>::difference_type __distance(RandomAccessIterator first,
+            RandomAccessIterator last, random_access_iterator_tag) {
+        return last - first;
+    }
+
+    //combined distance function
+    template <typename InputIterator>
+    typename iterator_traits<InputIterator>::difference_type distance(InputIterator first, InputIterator last) {
+        return __distance(first, last, iterator_traits<InputIterator>::iterator_category());
+    }
 
     //c++11 functions
     template <typename ForwardIterator>
