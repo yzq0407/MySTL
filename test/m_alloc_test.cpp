@@ -4,9 +4,10 @@
 #include <cassert>
 #include <chrono>
 #include "../src/m_alloc.h"
+#include "../src/m_iterator.h"
+#include "../src/m_vector.h"
 
 #define TEST_EPOCH 1000000
-#define __USE_MALLOC
 namespace my_stl {
 
     template<typename allocator>
@@ -54,19 +55,13 @@ namespace my_stl {
 
 
 int main() {
-    //test if SGI STL use the malloc allocator
-    #ifdef __USE_MALLOC
-    std::cout << "use malloc defined" << std::endl;
-    #else
-    std::cout << "not using malloc" << std::endl;
-    #endif
     //test result, sgi does not define use malloc
     //test on 10/18/16, pushing and poping 1M times
     std::cout << "test with vector push_back and pop_back: naive allocator" << std::endl;
     my_stl::testMyAllocWithVectorOperations<my_stl::naive_allocator<int>>();
     //naive implementation -- 126ms
     //sgi alloc implementation -- 28ms
-    std::cout << "test with vector push_back and pop_back: malloc_alloc: " << std::endl;
+    std::cout << "test with vector push_back and pop_back: my_simple_alloc: " << std::endl;
     my_stl::testMyAllocWithVectorOperations<my_stl::my_simple_alloc<int>>();
     //malloc_alloc implementation -- 79ms
     //sgi alloc implementation -- 18ms
