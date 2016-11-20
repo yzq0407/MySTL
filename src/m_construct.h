@@ -26,7 +26,7 @@ namespace my_stl {
     //helper function to extract whether a type has a default dtor
     template <typename TYPE>
     inline typename __type_traits<TYPE>::has_trivial_dtor __has_trivial_dtor(const TYPE& type) {
-        return __type_traits<TYPE>::has_trivial_dtor();
+        return typename __type_traits<TYPE>::has_trivial_dtor();
     }
 
     //if we want to destroy the object in the range of [start, end), it is important that the
@@ -34,7 +34,7 @@ namespace my_stl {
     template <typename ForwardIterator>
     inline void destroy (ForwardIterator first, ForwardIterator last) {
         //depend on whether we have
-        __destroy(first, last, has_trivial_dtor(iterator_traits<ForwardIterator>::value_type()));
+        __destroy(first, last, __has_trivial_dtor(typename iterator_traits<ForwardIterator>::value_type()));
     }
 
 
