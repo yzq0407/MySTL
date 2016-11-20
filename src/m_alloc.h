@@ -85,7 +85,7 @@ namespace my_stl {
 
 
     //testing the naive allocator we can see that it is not doing very well, in SGI implementation
-    //the allocator is divided into two level: first level is using malloc and free to allocate 
+    //the allocator is divided into two levels: first level is using malloc and free to allocate 
     //and manage memory, the second level(sub-allocator) is using complex memory pool
     //--------------------------simple allocator, generalized class--------------------------
     template <typename _Tp, typename Alloc = __default_alloc>
