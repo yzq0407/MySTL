@@ -4,6 +4,7 @@
 #define __MY_STL_VECTOR_H
 
 #include "m_memory.h"  //for allocator
+#include <stdio.h>
     
 namespace my_stl {
     
@@ -109,18 +110,75 @@ namespace my_stl {
             }
 
             void push_back (const _Tp& x) {
+                if (last != end_of_storage) {
+                    construct(last++, x);
+                }
+                else if (start) {
+                    //allocate twice the size
+                    int temp= size();
+                    iterator new_first = data_allocator.allocate(temp * 2);
+                    iterator new_last = uninitialized_copy(start, last, new_first);
+                    deallocate();
+                    start = new_first;
+                    last  = new_last;
+                    end_of_storage = start + temp * 2;
+                    construct(last++, x);
+                }
+                else {
+                    //its empty vetor, allocate exact one element
+                    start = data_allocator.allocate(1);
+                    end_of_storage = last = start + 1;
+                    construct(start, x);
+                }
             }
 
             void pop_back() {
+                //the semantics is that if the the vector is empty, do nothing
+                if (start) {
+                    destroy(--last);
+                    if (start == last)  {
+                        deallocate();
+                        start = last = end_of_storage = nullptr;
+                    }
+                }
             }
 
             void resize (size_type new_size, const _Tp& x) {
+                //if the current size is greater than count, the countainer is resuced to its 
+                //first count elements
+                //if the current size is less than count, additional elements are appended and 
+                //initialized with copies of value
+                if (size() > new_size) {
+                    destroy(start + new_size, last);
+                    last = start + new_size;
+                }
+                else if (size() < new_size) {
+                    if (end_of_storage - start >= new_size) {
+                        uninitialized_fill(last, start + new_size, x);
+                        last = start + new_size;
+                    }
+                    else {
+                        iterator new_start = data_allocator.allocate(new_size);
+                        iterator new_end = uninitialized_copy(start, last, new_start);
+                        uninitialized_fill(new_end, new_start + new_size, x);
+                        deallocate();
+                        start = new_start;
+                        last = end_of_storage = start + new_size;
+                    }
+                }
             }
 
             void resize (size_type new_size) {
+                //this will call the default 
+                resize(new_size, _Tp());
             }
 
             void clear () {
+                if (start) {
+                    destroy(start, last);
+                    data_allocator.deallocate(start, end_of_storage - start);
+                    start = last = end_of_storage = nullptr;
+                }
             }
     };
 }
