@@ -4,11 +4,10 @@
 #define __MY_STL_VECTOR_H
 
 #include "m_memory.h"  //for allocator
-#include <stdio.h>
+//#include <stdio.h>
     
 namespace my_stl {
-    
-    template <typename _Tp, typename Alloc = __default_alloc>
+    template <typename _Tp, typename Alloc = alloc>
     class vector {
         private:
             //three pointers pointed to the [start, last) and the end of the allocated memory
@@ -39,7 +38,7 @@ namespace my_stl {
             iterator allocate_and_fill(size_type n, const _Tp& value) {
                 iterator res = data_allocator.allocate(n);
                 uninitialized_fill (res, res + n, value);
-                return start;
+                return res;
             }
 
             void deallocate() {
@@ -55,11 +54,13 @@ namespace my_stl {
             }
 
         public:
-            inline iterator begin() {return start;}
-            inline iterator end() {return last;}
-            inline size_type size() const {return last - start;}
-            inline size_type capacity() const {return end_of_storage - start;}
-            inline bool empty() const {return start == last;}
+            iterator begin() {return start;}
+            iterator end() {return last;}
+            const_iterator cbegin() const {return start;};
+            const_iterator cend() const {return last;};
+            size_type size() const {return last - start;}
+            size_type capacity() const {return end_of_storage - start;}
+            bool empty() const {return start == last;}
 
             reference operator[](size_type n) {
                 //check boundary and return
@@ -96,6 +97,42 @@ namespace my_stl {
                 //note that this will require the default ctor of the type
                 fill_initialize(n, _Tp());
             }
+
+            //this change the behavior of a std::vector, while return a new allocated memory
+            vector(const vector<_Tp>& rhs) {
+                //copy constructor, need to allocate and initialize all the elements
+                start = data_allocator.allocate(rhs.size());
+                end_of_storage = last = uninitialized_copy(rhs.start, rhs.last, start);
+            }
+
+            const vector<_Tp>& operator=(vector<_Tp> rhs) {
+                swap(rhs);
+                return *this;
+            }
+
+            bool operator==(const vector<_Tp>& rhs) const {
+                if (size() != rhs.size())   return false;
+                for (auto _i1 = cbegin(), _i2 = rhs.cbegin(); _i1 != cend(); ++_i1, ++_i2) {
+                    if (*_i1 != *_i2)   return false;
+                }
+                return true;
+            }
+                
+
+            //swap function, should implement std::swap but let's keep it as it is 
+            void swap(vector<_Tp> &rhs) {
+                iterator start_temp = start;
+                iterator last_temp = last;
+                iterator end_temp = end_of_storage;
+                start = rhs.start;
+                last = rhs.last;
+                end_of_storage = rhs.end_of_storage;
+                rhs.start = start_temp;
+                rhs.last = last_temp;
+                rhs.end_of_storage = end_temp;
+            }
+                
+                
 
             ~vector() {
                 deallocate();
@@ -145,7 +182,7 @@ namespace my_stl {
 
             void resize (size_type new_size, const _Tp& x) {
                 //if the current size is greater than count, the countainer is resuced to its 
-                //first count elements
+                // count elements
                 //if the current size is less than count, additional elements are appended and 
                 //initialized with copies of value
                 if (size() > new_size) {
