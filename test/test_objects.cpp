@@ -18,6 +18,10 @@ bool Test_FOO_Simple::operator==(const Test_FOO_Simple& rhs) const {
     return mi == rhs.mi && mll == rhs.mll && mc == rhs.mc;
 }
 
+bool Test_FOO_Simple::operator!=(const Test_FOO_Simple& rhs) const {
+    return mi != rhs.mi || mll != rhs.mll || mc != rhs.mc;
+}
+
 
 //FOO_Array
 //
@@ -38,6 +42,13 @@ bool Test_FOO_Array::operator==(const Test_FOO_Array& rhs) const {
         if (array[i] != rhs.array[i])   return false;
     }
     return true;
+}
+
+bool Test_FOO_Array::operator!=(const Test_FOO_Array& rhs) const {
+    for (int i = 0; i < size; ++i) {
+        if (array[i] != rhs.array[i])   return true;
+    }
+    return false;
 }
 
 
@@ -66,6 +77,15 @@ const Test_FOO_Heap& Test_FOO_Heap::operator=(Test_FOO_Heap rhs) {
     swap(rhs);
     return *this;
 }
+
+bool Test_FOO_Heap::operator==(const Test_FOO_Heap& rhs) const{
+    return *m1 == *rhs.m1 && *m2 == *rhs.m2;
+}
+
+bool Test_FOO_Heap::operator!=(const Test_FOO_Heap& rhs) const{
+    return *m1 != *rhs.m1 || *m2 != *rhs.m2;
+}
+
 
 Test_FOO_Heap::~Test_FOO_Heap() {
     delete m1;

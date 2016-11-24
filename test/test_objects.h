@@ -1,3 +1,5 @@
+#ifndef __M_TEST_OBJECTS_H
+#define __M_TEST_OBJECTS_H
 //bunch of object for testing, including several cases
 
 class Test_FOO_Simple {
@@ -14,7 +16,7 @@ class Test_FOO_Simple {
         Test_FOO_Simple(int, long long, char);
 
         bool operator==(const Test_FOO_Simple& rhs) const;
-
+        bool operator!=(const Test_FOO_Simple& rhs) const;
 };
 
 
@@ -29,6 +31,7 @@ class Test_FOO_Array {
         //explicitly initialize all the array member to be val
         explicit Test_FOO_Array(int val);
         bool operator==(const Test_FOO_Array&) const;
+        bool operator!=(const Test_FOO_Array&) const;
 };
 
 class Test_FOO_Heap {
@@ -43,7 +46,8 @@ class Test_FOO_Heap {
         Test_FOO_Heap(const Test_FOO_Heap& foo);
         const Test_FOO_Heap& operator=(Test_FOO_Heap foo);
 
-        bool operator==(const Test_FOO_Heap& rhs);
+        bool operator==(const Test_FOO_Heap& rhs) const;
+        bool operator!=(const Test_FOO_Heap& rhs) const;
 
         void swap(Test_FOO_Heap& foo) {
             int* temp1 = m1;
@@ -56,5 +60,4 @@ class Test_FOO_Heap {
         
         ~Test_FOO_Heap();
 };
-
-
+#endif
