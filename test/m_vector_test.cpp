@@ -1,6 +1,7 @@
 #include "../src/m_vector.h"
 #include <gtest/gtest.h>
 #include "test_objects.h"
+#include <ctime>   //for std::clock()
 
 
 TEST(VectorTest, TestSimpleConstruction) {
@@ -76,3 +77,111 @@ TEST(VectorTest, TestObjectConstruction) {
         } 
     }
 }
+
+//test fixture to be used in the following test
+struct VectorTestFixture: public ::testing::Test{
+    //int vector
+    std::vector<int> svi;
+    my_stl::vector<int> mvi;
+
+    //simple objects
+    std::vector<Test_FOO_Simple> sv_simple;
+    my_stl::vector<Test_FOO_Simple> mv_simple;
+
+    //array objects
+    std::vector<Test_FOO_Array> sv_array;
+    my_stl::vector<Test_FOO_Array> mv_array;
+
+    //heap objects
+    std::vector<Test_FOO_Heap> sv_heap;
+    my_stl::vector<Test_FOO_Heap> mv_heap;
+    
+    void SetUp() {
+        printf ("Setup the vector fixture\n");
+    }
+
+    void TearDown() {
+        printf ("Tearing down the vector fixture\n");
+    }
+};
+
+TEST_F(VectorTestFixture, TestPushBack) {
+    //simple push
+    const int size_limit = 10000;
+    for (int i = 0; i < size_limit; ++i) {
+        svi.push_back(i);
+        mvi.push_back(i);
+       
+        sv_simple.push_back(Test_FOO_Simple(i, 2* i - 1, (char)(i % 256)));
+        mv_simple.push_back(Test_FOO_Simple(i, 2* i - 1, (char)(i % 256)));
+
+        sv_array.push_back(Test_FOO_Array(i));
+        mv_array.push_back(Test_FOO_Array(i));
+
+        sv_heap.push_back(Test_FOO_Heap(i));
+        mv_heap.push_back(Test_FOO_Heap(i));
+
+        EXPECT_EQ(svi.size(), mvi.size()) << "int vector size assertion failed";
+        EXPECT_EQ(svi.capacity(), mvi.capacity()) << "int vector capacity assertion failed";
+        
+        EXPECT_EQ(sv_heap.size(), mv_heap.size()) << "heap vector capacity assertion failed";
+        EXPECT_EQ(sv_heap.capacity(), mv_heap.capacity()) << "heap vector capacity assertion failed";
+        
+        EXPECT_EQ(svi.size(), mvi.size()) << "int vector size assertion failed";
+        EXPECT_EQ(svi.capacity(), mvi.capacity()) << "int vector size assertion failed";
+        
+        EXPECT_EQ(svi.back(), mvi.back()) << "int vector back element assertion failed";
+        EXPECT_EQ(sv_simple.front(), mv_simple.front()) << "simple vector front assertion failed";
+
+        int medium = i / 2;
+        EXPECT_EQ(sv_array[medium] == mv_array[medium], true) << "array vector medium element assertion failed"; 
+    }
+} 
+
+TEST_F(VectorTestFixture, TestPopBack) {
+    using std::clock;
+    constexpr int size_limit = 1000000;
+    //also count time
+    clock_t begin_time = clock();
+    for (int i = 0; i < size_limit; ++i) {
+        svi.push_back(i);
+    }
+    clock_t end_time = clock();
+    printf("It takes std vector %f seconds to push 1000000 int\n", float(end_time - begin_time) / CLOCKS_PER_SEC);
+    //my vector
+    begin_time = clock();
+    for (int i = 0; i < size_limit; ++i) {
+        mvi.push_back(i);
+    }
+    end_time = clock();
+    printf("It takes my vector %f seconds to push 1000000 int\n", float(end_time - begin_time) / CLOCKS_PER_SEC);
+    //heap based object 
+    begin_time = clock();
+    for (int i = 0; i < size_limit; ++i) {
+        sv_heap.push_back(Test_FOO_Heap(i));
+    }
+    end_time = clock();
+    printf("It takes std vector %f seconds to push 1000000 heap objects\n", float(end_time - begin_time) / CLOCKS_PER_SEC);
+    //my vector
+    begin_time = clock();
+    for (int i = 0; i < size_limit; ++i) {
+        mv_heap.push_back(Test_FOO_Heap(i));
+    }
+    end_time = clock();
+    printf("It takes my vector %f seconds to push 1000000 heap objects\n", float(end_time - begin_time) / CLOCKS_PER_SEC);
+
+    while (!mvi.empty()) {
+        EXPECT_EQ(svi.back(), mvi.back()) << "Back element assertion failed";
+        EXPECT_EQ(svi.size(), mvi.size()) << "Size assertion after pop back failed";
+        EXPECT_EQ(svi.capacity(), mvi.capacity()) << "Capacity assertion after pop back failed";
+        svi.pop_back();
+        mvi.pop_back();
+    }
+
+    //clear test
+    sv_heap.clear();
+    mv_heap.clear();
+    ASSERT_EQ(sv_heap.size(), mv_heap.size()) << "Size assertion after clear failed";
+    ASSERT_EQ(sv_heap.capacity(), mv_heap.capacity()) << "Capacity assertion after clear failed";
+}
+

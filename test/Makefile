@@ -13,6 +13,6 @@ m_alloc_test.o: m_alloc_test.cpp
 m_vector_test.o: m_vector_test.cpp
 	$(CC) $(CFLAGS) -c m_vector_test.cpp
 test_objects.o: test_objects.h test_objects.cpp
-	$(CC) $(CFLAGS) -c test_objects.h test_objects.cpp
+	$(CC) $(CFLAGS) -c test_objects.cpp
 clean:
 	rm $(EXECUTABLES) $(OBJECTS)

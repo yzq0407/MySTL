@@ -213,8 +213,7 @@ namespace my_stl {
             void clear () {
                 if (start) {
                     destroy(start, last);
-                    data_allocator.deallocate(start, end_of_storage - start);
-                    start = last = end_of_storage = nullptr;
+                    last = start;
                 }
             }
     };
