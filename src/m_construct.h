@@ -2,8 +2,8 @@
 //Here it is not global, for obvious reason
 //Created by Theodore Yang on 11/18/2016
 
-#ifndef MY_STL_CONSTRUCT_H
-#define MY_STL_CONSTRUCT_H
+#ifndef __MY_STL_CONSTRUCT_H
+#define __MY_STL_CONSTRUCT_H
 #include <new>    //for placement new
 #include "m_type_traits.h"   //for type traits
 #include "m_iterator.h"      //for iterator traits
