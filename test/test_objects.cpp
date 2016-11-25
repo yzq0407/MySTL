@@ -53,24 +53,18 @@ bool Test_FOO_Array::operator!=(const Test_FOO_Array& rhs) const {
 
 
 //FOO_Heap
-Test_FOO_Heap::Test_FOO_Heap() {
-    m1 = new int(-101);
-    m2 = new Test_FOO_Simple(12);
+Test_FOO_Heap::Test_FOO_Heap():m1(new int(-101)), m2(new Test_FOO_Simple(12)) {
 }
 
-Test_FOO_Heap::Test_FOO_Heap(int val) {
-    m1 = new int(val);
-    m2 = new Test_FOO_Simple(val);
+Test_FOO_Heap::Test_FOO_Heap(int val): m1(new int(val)), m2(new Test_FOO_Simple(val)){
 }
 
-Test_FOO_Heap::Test_FOO_Heap(const Test_FOO_Simple& foo) {
-    m1 = new int(-101);
-    m2 = new Test_FOO_Simple(foo);
+Test_FOO_Heap::Test_FOO_Heap(const Test_FOO_Simple& foo): m1(new int(-101)),
+    m2(new Test_FOO_Simple(foo)) {
 }
 
-Test_FOO_Heap::Test_FOO_Heap(const Test_FOO_Heap& foo) {
-    m1 = new int(*foo.m1);
-    m2 = new Test_FOO_Simple(*foo.m2);
+Test_FOO_Heap::Test_FOO_Heap(const Test_FOO_Heap& foo): m1(new int(*foo.m1)),
+    m2(new Test_FOO_Simple(*foo.m2)) {
 }
 
 const Test_FOO_Heap& Test_FOO_Heap::operator=(Test_FOO_Heap rhs) {
