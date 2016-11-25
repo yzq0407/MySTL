@@ -4,8 +4,9 @@
 #define __MY_STL_VECTOR_H
 
 #include "m_memory.h"  //for allocator
+#include "m_algobase.h"  //for copy function
 //#include <stdio.h>
-    
+
 namespace my_stl {
     template <typename _Tp, typename Alloc = alloc>
     class vector {
@@ -132,8 +133,7 @@ namespace my_stl {
                 rhs.end_of_storage = end_temp;
             }
                 
-                
-
+            //dtor
             ~vector() {
                 deallocate();
             }
@@ -170,14 +170,7 @@ namespace my_stl {
             }
 
             void pop_back() {
-                //the semantics is that if the the vector is empty, do nothing
-                if (start) {
-                    destroy(--last);
-                    if (start == last)  {
-                        deallocate();
-                        start = last = end_of_storage = nullptr;
-                    }
-                }
+                destroy(--last);
             }
 
             void resize (size_type new_size, const _Tp& x) {
@@ -215,6 +208,26 @@ namespace my_stl {
                     destroy(start, last);
                     last = start;
                 }
+            }
+
+            //remove elements in the range [head, tail)
+            iterator erase(iterator head, iterator tail) {
+                //destroy the range first
+                if (head >= tail)    return head;
+                iterator new_last = copy(tail, last, head);
+                destroy(new_last, last);
+                last = new_last;
+                return head;
+            }
+
+            //remove one single elements in the index
+            iterator erase(iterator position) {
+                if (position + 1 != end()) {
+                    copy(position + 1, last, position);
+                }
+                --last;
+                destroy(last);
+                return position;
             }
     };
 }
