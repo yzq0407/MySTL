@@ -124,4 +124,12 @@ namespace my_stl {
         }
         return result;
     }
+
+    template <typename ForwardIterator, typename TYPE>
+    void fill(ForwardIterator first, ForwardIterator last, const TYPE& val) {
+        while (first != last) {
+            *first = val;
+            ++first;
+        }
+    }
 }

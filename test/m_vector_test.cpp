@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include "test_objects.h"
 #include <ctime>   //for std::clock()
+#include <string>  //for std::string
 
 
 TEST(VectorTest, TestSimpleConstruction) {
@@ -96,12 +97,12 @@ struct VectorTestFixture: public ::testing::Test{
     std::vector<Test_FOO_Heap> sv_heap;
     my_stl::vector<Test_FOO_Heap> mv_heap;
     
+    std::vector<std::string> sv_string;
+    my_stl::vector<std::string> mv_string;
     void SetUp() {
-        printf ("Setup the vector fixture\n");
     }
 
     void TearDown() {
-        printf ("Tearing down the vector fixture\n");
     }
 };
 
@@ -269,5 +270,48 @@ TEST_F(VectorTestFixture, TestErasure) {
                 << "didn't match";
         }
     }
+}
+
+
+template<typename T>
+inline void testInsertTemplate (std::vector<T> sv, my_stl::vector<T> mv) {
+    constexpr int start_size = 1000;
+    sv.insert(sv.cbegin(), start_size, T(100));
+    mv.insert(mv.begin(), start_size, T(100));
+    ASSERT_EQ(sv.front() == mv.front(), true);
+    ASSERT_EQ(sv.back() == mv.back(), true);
+    ASSERT_EQ(sv.size() == mv.size(), true);
+    ASSERT_EQ(sv.capacity() == mv.capacity(), true);
+    for (int i = 0; i < 20; ++i) {
+        //insert at random position
+        auto pos = rand() % sv.size();
+        auto size = rand() % sv.size();
+        auto value = T(rand() % 15);
+        bool insert_one = rand() % 2;
+        if (insert_one) {
+            sv.insert(sv.begin() + pos, value);
+            mv.insert(mv.begin() + pos, value);
+        }
+        else {
+            sv.insert(sv.begin() + pos, size, value);
+            mv.insert(mv.begin() + pos, size, value);
+        }
+        ASSERT_EQ(sv.front() == mv.front(), true);
+        ASSERT_EQ(sv.back() == mv.back(), true);
+        ASSERT_EQ(sv.size() == mv.size(), true);
+        ASSERT_EQ(sv.capacity() == mv.capacity(), true);
+        
+        for (int j = 0; j < sv.size(); ++j) {
+            ASSERT_EQ(sv[j] == mv[j], true);
+        }
+    }
+}
+
+
+TEST_F(VectorTestFixture, TestInsert) {
+    testInsertTemplate(svi, mvi);
+    testInsertTemplate(sv_heap, mv_heap);
+    testInsertTemplate(sv_simple, mv_simple);
+    testInsertTemplate(sv_array, mv_array);
 }
 
