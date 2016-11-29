@@ -5,6 +5,19 @@
 #include <string>  //for std::string
 
 
+template<typename T>
+inline void assertSizeAndCapacity(std::vector<T>& sv, my_stl::vector<T>& mv) {
+    ASSERT_EQ(sv.size(), mv.size()) << "size assertion failed ";
+    ASSERT_EQ(sv.capacity(), mv.capacity()) << "capacity assertion failed ";
+}
+
+template<typename T>
+inline void assertElementsEqual(std::vector<T> sv, my_stl::vector<T> mv) {
+    for (size_t idx = 0; idx < sv.size(); ++idx) {
+        ASSERT_EQ(sv[idx] == mv[idx], true) << "the " << idx << "th element assertion failed";
+    }
+}
+
 TEST(VectorTest, TestSimpleConstruction) {
     {   
         std::vector<int> s_vector;
@@ -272,9 +285,26 @@ TEST_F(VectorTestFixture, TestErasure) {
     }
 }
 
+template<typename T>
+inline void testInsertBasicTemplate(std::vector<T>& sv, my_stl::vector<T>& mv) {
+    for (int i = 0; i < 10; ++i) {
+        sv.push_back(T(2 * i));
+        mv.push_back(T(2 * i));
+    }
+    assertSizeAndCapacity(sv, mv);
+
+    sv.insert(sv.begin() + 5, T(6));
+    mv.insert(mv.begin() + 5, T(6));
+    assertSizeAndCapacity(sv, mv);
+    assertElementsEqual(sv, mv);
+    sv.insert(sv.begin() + 8, 9, T(4));
+    mv.insert(mv.begin() + 8, 9, T(4));
+    assertSizeAndCapacity(sv, mv);
+    assertElementsEqual(sv, mv);
+}
 
 template<typename T>
-inline void testInsertTemplate (std::vector<T> sv, my_stl::vector<T> mv) {
+inline void testInsertTemplate (std::vector<T>& sv, my_stl::vector<T>& mv) {
     constexpr int start_size = 1000;
     sv.insert(sv.cbegin(), start_size, T(100));
     mv.insert(mv.begin(), start_size, T(100));
@@ -309,9 +339,57 @@ inline void testInsertTemplate (std::vector<T> sv, my_stl::vector<T> mv) {
 
 
 TEST_F(VectorTestFixture, TestInsert) {
+    testInsertBasicTemplate(svi, mvi);
+    testInsertBasicTemplate(sv_heap, mv_heap);
     testInsertTemplate(svi, mvi);
     testInsertTemplate(sv_heap, mv_heap);
     testInsertTemplate(sv_simple, mv_simple);
     testInsertTemplate(sv_array, mv_array);
 }
 
+template<typename T>
+inline void testReserveTemplate(std::vector<T>& sv, my_stl::vector<T>& mv) {
+    assertSizeAndCapacity<T>(sv, mv);
+    sv.reserve(5);
+    mv.reserve(5);
+    assertSizeAndCapacity<T>(sv, mv);
+    assertElementsEqual<T>(sv, mv);
+    sv.reserve(200);
+    mv.reserve(200);
+    assertSizeAndCapacity<T>(sv, mv);
+    assertElementsEqual<T>(sv, mv);
+    sv.push_back(T(2));
+    sv.push_back(T(4));
+    mv.push_back(T(2));
+    mv.push_back(T(4));
+    assertSizeAndCapacity<T>(sv, mv);
+    assertElementsEqual<T>(sv, mv);
+    for (int i = 0; i < 500; ++i) {
+        sv.push_back(T(i));
+        mv.push_back(T(i));
+        assertSizeAndCapacity<T>(sv, mv);
+        assertElementsEqual<T>(sv, mv);
+    }
+    sv.reserve(2000);
+    mv.reserve(2000);
+    assertSizeAndCapacity<T>(sv, mv);
+    assertElementsEqual<T>(sv, mv);
+    sv.reserve(400);
+    mv.reserve(400);
+    assertSizeAndCapacity<T>(sv, mv);
+    assertElementsEqual<T>(sv, mv);
+    while (!sv.empty()) {
+        sv.pop_back();
+        mv.pop_back();
+        assertSizeAndCapacity<T>(sv, mv);
+        assertElementsEqual<T>(sv, mv);
+    }
+}
+
+
+TEST_F(VectorTestFixture, TestReserve) {
+    testReserveTemplate(svi, mvi);
+    testReserveTemplate(sv_heap, mv_heap);
+    testReserveTemplate(sv_simple, mv_simple);
+    testReserveTemplate(sv_array, mv_array);
+}
