@@ -4,8 +4,9 @@
 #define __MY_STL_VECTOR_H
 
 #include "m_memory.h"  //for allocator
+#include "m_algobase.h"  //for copy function
 //#include <stdio.h>
-    
+
 namespace my_stl {
     template <typename _Tp, typename Alloc = alloc>
     class vector {
@@ -102,7 +103,7 @@ namespace my_stl {
             vector(const vector<_Tp>& rhs) {
                 //copy constructor, need to allocate and initialize all the elements
                 start = data_allocator.allocate(rhs.size());
-                end_of_storage = last = uninitialized_copy(rhs.start, rhs.last, start);
+                end_of_storage = last = my_stl::uninitialized_copy(rhs.start, rhs.last, start);
             }
 
             const vector<_Tp>& operator=(vector<_Tp> rhs) {
@@ -132,8 +133,7 @@ namespace my_stl {
                 rhs.end_of_storage = end_temp;
             }
                 
-                
-
+            //dtor
             ~vector() {
                 deallocate();
             }
@@ -170,14 +170,7 @@ namespace my_stl {
             }
 
             void pop_back() {
-                //the semantics is that if the the vector is empty, do nothing
-                if (start) {
-                    destroy(--last);
-                    if (start == last)  {
-                        deallocate();
-                        start = last = end_of_storage = nullptr;
-                    }
-                }
+                destroy(--last);
             }
 
             void resize (size_type new_size, const _Tp& x) {
@@ -213,11 +206,105 @@ namespace my_stl {
             void clear () {
                 if (start) {
                     destroy(start, last);
-                    data_allocator.deallocate(start, end_of_storage - start);
-                    start = last = end_of_storage = nullptr;
+                    last = start;
+                }
+            }
+
+            //remove elements in the range [head, tail)
+            iterator erase(iterator head, iterator tail) {
+                //destroy the range first
+                if (head >= tail)    return head;
+                iterator new_last = copy(tail, last, head);
+                destroy(new_last, last);
+                last = new_last;
+                return head;
+            }
+
+            //remove one single elements in the index
+            iterator erase(iterator position) {
+                if (position + 1 != end()) {
+                    copy(position + 1, last, position);
+                }
+                --last;
+                destroy(last);
+                return position;
+            }
+
+            //the insert function
+            iterator insert(const iterator pos, const _Tp& value);
+
+            iterator insert(const iterator pos, size_type count, const _Tp& value);
+
+            //the reserve function
+            void reserve(size_type size) {
+                if (capacity() < size) {
+                    iterator new_start = data_allocator.allocate(size);
+                    iterator new_last = uninitialized_copy(start, last, new_start);
+                    deallocate();
+                    start = new_start;
+                    last = new_last;
+                    end_of_storage = start + size;
                 }
             }
     };
+
+
+    template <typename _Tp, typename Alloc>
+    typename vector<_Tp, Alloc>::iterator vector<_Tp, Alloc>::insert(const typename vector<_Tp, Alloc>::iterator pos,
+            const _Tp& value){
+        return insert(pos, 1, value);
+    }
+
+    template <typename _Tp, typename Alloc>
+    typename vector<_Tp, Alloc>::iterator vector<_Tp, Alloc>::insert(
+            const typename vector<_Tp, Alloc>::iterator pos,
+            typename vector<_Tp, Alloc>::size_type count, const _Tp& value){
+        if (count) {         //only insert if n is not 0
+            if (end_of_storage - last >= count) {     //if there is enough space
+                //if the end already passed the pos + n, we need to copy [end - n, end)
+                //to [end, end + n)
+                if (last - pos >= count) {
+                    my_stl::uninitialized_copy(last - count, last, last);
+                    //then copy [pos, end - n) to [pos + n, end)
+                    //note we should use copy_backward, otherwise, there will be corrupted element
+                    my_stl::copy_backward(pos, last - count, last);
+                    //fill element in the range [pos, pos + n)
+                    my_stl::fill(pos, pos + count, value); 
+                }
+                //in this case, end is less than pos + n
+                else {
+                    //copy [pos, last) into [last + n - (last - pos), last + n)
+                    my_stl::uninitialized_copy(pos, last, count + pos);
+                    //fill [post, last) with value
+                    my_stl::fill(pos, last, value);
+                    //initialize [last, pos + n) with value
+                    my_stl::uninitialized_fill_n(last, pos + count - last, value);
+                }
+                last += count;
+            }
+            else {                  //there is not enough space need to allocate enough space
+                //printf ("start inserting----alocate new memory\n");
+                //we need to determine how much space is allocated 2 times or right amount
+                const size_type old_size = size();
+                //printf ("old size is %d\n", (int)old_size);
+                const size_type new_size = old_size + (count > old_size? count: old_size);
+                //printf ("new size is %d\n", (int)new_size);
+                iterator new_first = data_allocator.allocate(new_size);
+                //copy the first part
+                iterator new_last = uninitialized_copy(start, pos, new_first);
+                //fill the value
+                new_last = uninitialized_fill_n(new_last, count, value);
+                //copy the last part
+                new_last = uninitialized_copy(pos, last, new_last);
+                //deallocate the memmoty
+                deallocate();
+                start = new_first;
+                last = new_last;
+                end_of_storage = start + new_size;
+            }
+        }
+        return start;
+    }
 }
 
 

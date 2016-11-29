@@ -45,10 +45,11 @@ namespace my_stl {
 
     //this function will contruct exactly n object in the range [first, first + n) by given value T
     template <typename ForwardIterator, typename TYPE>
-    void uninitialize_fill_n (ForwardIterator first, size_t n, const TYPE& value) {
+    ForwardIterator uninitialized_fill_n (ForwardIterator first, size_t n, const TYPE& value) {
         for (; n > 0; --n, ++first) {
             construct(&*first, value);
         }
+        return first;
     }
 }
 
