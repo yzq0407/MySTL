@@ -231,39 +231,50 @@ namespace my_stl {
             }
 
             //the insert function
-            iterator insert(iterator pos, const _Tp& value);
+            iterator insert(const iterator pos, const _Tp& value);
 
-            iterator insert(iterator pos, size_type count, const _Tp& value);
+            iterator insert(const iterator pos, size_type count, const _Tp& value);
 
+            //the reserve function
+            void reserve(size_type size) {
+                if (capacity() < size) {
+                    iterator new_start = data_allocator.allocate(size);
+                    iterator new_last = uninitialized_copy(start, last, new_start);
+                    deallocate();
+                    start = new_start;
+                    last = new_last;
+                    end_of_storage = start + size;
+                }
+            }
     };
 
 
     template <typename _Tp, typename Alloc>
-    typename vector<_Tp, Alloc>::iterator vector<_Tp, Alloc>::insert(typename vector<_Tp, Alloc>::iterator pos,
+    typename vector<_Tp, Alloc>::iterator vector<_Tp, Alloc>::insert(const typename vector<_Tp, Alloc>::iterator pos,
             const _Tp& value){
         return insert(pos, 1, value);
     }
 
     template <typename _Tp, typename Alloc>
     typename vector<_Tp, Alloc>::iterator vector<_Tp, Alloc>::insert(
-            typename vector<_Tp, Alloc>::iterator pos,
+            const typename vector<_Tp, Alloc>::iterator pos,
             typename vector<_Tp, Alloc>::size_type count, const _Tp& value){
-        if (count != 0) {         //only insert if n is not 0
+        if (count) {         //only insert if n is not 0
             if (end_of_storage - last >= count) {     //if there is enough space
-                printf ("start inserting----fill old memory\n");
                 //if the end already passed the pos + n, we need to copy [end - n, end)
                 //to [end, end + n)
                 if (last - pos >= count) {
                     my_stl::uninitialized_copy(last - count, last, last);
                     //then copy [pos, end - n) to [pos + n, end)
-                    my_stl::copy(pos, last - count, pos + count);
+                    //note we should use copy_backward, otherwise, there will be corrupted element
+                    my_stl::copy_backward(pos, last - count, last);
                     //fill element in the range [pos, pos + n)
                     my_stl::fill(pos, pos + count, value); 
                 }
                 //in this case, end is less than pos + n
                 else {
                     //copy [pos, last) into [last + n - (last - pos), last + n)
-                    my_stl::uninitialized_copy(pos, last, last + count - (last - pos));
+                    my_stl::uninitialized_copy(pos, last, count + pos);
                     //fill [post, last) with value
                     my_stl::fill(pos, last, value);
                     //initialize [last, pos + n) with value
