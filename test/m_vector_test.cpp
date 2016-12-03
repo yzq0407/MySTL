@@ -210,6 +210,8 @@ TEST_F(VectorTestFixture, TestAssignment) {
     end = clock();
     printf("It takes my vector %f seconds to be assigned from %d elements to %d elements\n", 
             float(end - begin) / CLOCKS_PER_SEC, 0, large_size);
+    //test self assignment 
+    mvi = mvi;
     for (int num: mvi) {
         ASSERT_EQ(num, 20);
     }

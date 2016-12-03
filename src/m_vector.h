@@ -42,7 +42,7 @@ namespace my_stl {
                 return res;
             }
 
-            void deallocate() {
+            void deallocate() noexcept {
                 if (!start) return;
                 destroy(start, last);
                 data_allocator.deallocate(start, end_of_storage - start);
@@ -99,17 +99,38 @@ namespace my_stl {
                 fill_initialize(n, _Tp());
             }
 
-            //this change the behavior of a std::vector, while return a new allocated memory
             vector(const vector<_Tp>& rhs) {
                 //copy constructor, need to allocate and initialize all the elements
                 start = data_allocator.allocate(rhs.size());
                 end_of_storage = last = my_stl::uninitialized_copy(rhs.start, rhs.last, start);
             }
 
-            const vector<_Tp>& operator=(vector<_Tp> rhs) {
-                swap(rhs);
+            const vector<_Tp>& operator=(const vector<_Tp>& rhs) noexcept {
+                if (this != &rhs) {
+                    deallocate();
+                    start = rhs.start;
+                    last = rhs.last;
+                    end_of_storage = rhs.end_of_storage;
+                }
                 return *this;
             }
+
+            //move constructor
+            vector(vector<_Tp>&& rhs) noexcept: start(rhs.start), last(rhs.last), end_of_storage(rhs.end_of_storage) {
+                rhs.start = rhs.last = rhs.end_of_storage = nullptr;
+            }
+
+            //move assignment
+            const vector<_Tp>& operator=(vector<_Tp> &&rhs) noexcept {
+                if (this != &rhs) {
+                    start = rhs.start;
+                    last = rhs.last;
+                    end_of_storage = rhs.end_of_storage;
+                    rhs.start = rhs.last = rhs.end_of_storage = nullptr;
+                }
+                return *this;
+            }
+                
 
             bool operator==(const vector<_Tp>& rhs) const {
                 if (size() != rhs.size())   return false;
@@ -118,7 +139,10 @@ namespace my_stl {
                 }
                 return true;
             }
-                
+
+            bool operator!=(const vector<_Tp>& rhs) const {
+                return !operator==(rhs);
+            }
 
             //swap function, should implement std::swap but let's keep it as it is 
             void swap(vector<_Tp> &rhs) {
