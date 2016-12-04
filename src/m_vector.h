@@ -38,7 +38,7 @@ namespace my_stl {
             // helper function to allocate n object and initialize it by default value
             iterator allocate_and_fill(size_type n, const _Tp& value) {
                 iterator res = data_allocator.allocate(n);
-                uninitialized_fill (res, res + n, value);
+                my_stl::uninitialized_fill (res, res + n, value);
                 return res;
             }
 
@@ -52,6 +52,26 @@ namespace my_stl {
             void fill_initialize (size_type n, const _Tp& value) {
                 start = allocate_and_fill(n, value);
                 end_of_storage = last = start + n;
+            }
+
+            template <typename RandomAccessIterator>
+            inline void __construct_from_iterator(RandomAccessIterator _first,
+                    RandomAccessIterator _last, random_access_iterator_tag)
+            {
+                auto n = _last - _first;
+                start = data_allocator.allocate(n);
+                last = end_of_storage = start + n;
+                for (iterator it = start;  n != 0; --n, ++it, ++_first) {
+                    construct(it, *_first);
+                }
+            }
+
+            template <typename InputIterator>
+            inline void __construct_from_iterator(InputIterator _first, 
+                    InputIterator _last, input_iterator_tag) {
+                for (; _first != _last; ++_first) {
+                    push_back(*_first);
+                }
             }
 
         public:
@@ -81,7 +101,7 @@ namespace my_stl {
             }
 
             //ctors
-            vector(): start(nullptr), last(nullptr), end_of_storage(nullptr){}
+            vector() noexcept: start(nullptr), last(nullptr), end_of_storage(nullptr){}
 
             vector(size_type n, const _Tp& value) {
                 fill_initialize(n, value);
@@ -105,13 +125,19 @@ namespace my_stl {
                 end_of_storage = last = my_stl::uninitialized_copy(rhs.start, rhs.last, start);
             }
 
-            const vector<_Tp>& operator=(const vector<_Tp>& rhs) noexcept {
-                if (this != &rhs) {
-                    deallocate();
-                    start = rhs.start;
-                    last = rhs.last;
-                    end_of_storage = rhs.end_of_storage;
+            //c++11
+            vector(std::initializer_list<_Tp> _il) {
+                if (_il.size() > 0) {
+                    start = data_allocator.allocate(_il.size());
+                    end_of_storage = last = my_stl::uninitialized_copy(_il.begin(), _il.end(), start);
                 }
+            }
+
+            vector<_Tp>& operator=(const vector<_Tp>& rhs) {
+                //note this is the only exception safe implementation which also also
+                //overloading with move assignment operator
+                vector<_Tp> temp(rhs);
+                swap(temp);
                 return *this;
             }
 
@@ -130,6 +156,13 @@ namespace my_stl {
                 }
                 return *this;
             }
+
+
+            template<typename InputIterator>
+            vector(InputIterator _first, InputIterator _last) {
+                //construct vector based on the iterator type, if it is random iterator, we get the distance before iterate it
+                __construct_from_iterator(_first, _last, typename iterator_traits<InputIterator>::iterator_category());
+            }
                 
 
             bool operator==(const vector<_Tp>& rhs) const {
@@ -145,7 +178,7 @@ namespace my_stl {
             }
 
             //swap function, should implement std::swap but let's keep it as it is 
-            void swap(vector<_Tp> &rhs) {
+            void swap(vector<_Tp> &rhs) noexcept{
                 iterator start_temp = start;
                 iterator last_temp = last;
                 iterator end_temp = end_of_storage;
