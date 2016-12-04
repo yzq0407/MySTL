@@ -395,3 +395,29 @@ TEST_F(VectorTestFixture, TestReserve) {
     testReserveTemplate(sv_simple, mv_simple);
     testReserveTemplate(sv_array, mv_array);
 }
+
+TEST(VectorTest, TestIteratorConstruction) {
+    my_stl::vector<std::string> original(100, "abc");
+    my_stl::vector<std::string> copy(original.begin(), original.end());
+    ASSERT_EQ(original.size(), copy.size());
+    ASSERT_EQ(original.capacity(), copy.capacity());
+    for (auto o_begin = original.cbegin(), c_begin = copy.cbegin();
+            o_begin != original.cend(); ++o_begin, ++c_begin) {
+        ASSERT_EQ(*o_begin, *c_begin);
+    }
+}
+
+
+TEST(VectorTest, TestListInitialization) {
+    std::vector<std::string> svs1 {"start", "middle1", "middle2", "middle3", "middle4", "end"};
+    my_stl::vector<std::string> mvs1 {"start", "middle1", "middle2", "middle3", "middle4", "end"};
+    assertSizeAndCapacity(svs1, mvs1);   
+
+    std::vector<std::string> svs2 {};
+    my_stl::vector<std::string> mvs2 {};
+    assertSizeAndCapacity(svs2, mvs2);   
+    
+    std::vector<int> svs3 = {5, 19, 20, 43, -2, 15};
+    my_stl::vector<int> mvs3 = {5, 19, 20, 43, -2, 15};
+    assertSizeAndCapacity(svs3, mvs3);   
+}
