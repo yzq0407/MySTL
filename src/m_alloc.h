@@ -352,31 +352,31 @@ namespace my_stl {
             /*                 template<class _Tp1> allocator(const allocator<_Tp1>&); */
 
             //get back the address of one item
-            inline pointer address(reference tp) {return &tp;}
+            static pointer address(reference tp) {return &tp;}
 
             //get back the const address of one item
-            inline const pointer address(const_reference tp) const{return &tp;}
+            static const pointer address(const_reference tp) {return &tp;}
 
             //allocator, second argument is just to enhance locality
-            inline pointer allocate(size_type n, const void* = 0) {
+            static pointer allocate(size_type n, const void* = 0) {
                 return (pointer) Alloc::allocate(n * sizeof(_Tp));
             }
 
             //return all the memory allocated, n has to be the same as we run allocate
-            inline void deallocate(pointer p, size_type n) {
+            static void deallocate(pointer p, size_type n) {
                 Alloc::deallocate(p, n * sizeof(_Tp));
             }
 
             //the max volumn
-            size_type max_size() const {
+            static size_type max_size() {
                 return UINT_MAX / sizeof (_Tp);
             }
 
             //construct x for the pointer, use placement new
-            inline void construct(pointer p, const_reference x){new (p) _Tp(x);};
+            static void construct(pointer p, const_reference x){new (p) _Tp(x);};
 
             //destroy this object
-            inline void destroy(pointer p) {p -> ~_Tp();};
+            static void destroy(pointer p) {p -> ~_Tp();};
     };
    
 }
