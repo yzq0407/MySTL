@@ -44,12 +44,15 @@ class Test_FOO_Heap {
         explicit Test_FOO_Heap(int);
         explicit Test_FOO_Heap(const Test_FOO_Simple& foo);
         Test_FOO_Heap(const Test_FOO_Heap& foo);
-        const Test_FOO_Heap& operator=(Test_FOO_Heap foo);
+        Test_FOO_Heap& operator=(const Test_FOO_Heap& foo);
+
+        Test_FOO_Heap(Test_FOO_Heap&& foo);
+        Test_FOO_Heap& operator=(Test_FOO_Heap&& rhs) noexcept;
 
         bool operator==(const Test_FOO_Heap& rhs) const;
         bool operator!=(const Test_FOO_Heap& rhs) const;
 
-        void swap(Test_FOO_Heap& foo) {
+        void swap(Test_FOO_Heap& foo) noexcept{
             int* temp1 = m1;
             Test_FOO_Simple* temp2 = m2;
             m1 = foo.m1;
