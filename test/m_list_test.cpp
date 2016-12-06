@@ -2,8 +2,42 @@
 #include <list>
 #include <gtest/gtest.h>
 #include <iostream>
+#include "test_objects.h"
 
-TEST(ListTest, TestListConstruction) {
+
+template<typename T>
+inline void assertListSize(const std::list<T>& std_list, const my_stl::list<T>& my_list) {
+    ASSERT_EQ(std_list.size(), my_list.size());
+}
+
+template<typename T>
+inline void testPushBackAndClearTemplate(my_stl::list<T>& my_list){
+    ASSERT_EQ(my_list.empty(), true) << "not given empty list";
+    ASSERT_EQ(my_list.size(), 0) << "not given empty list";
+
+    for (size_t size = 0; size < 100; ++size) {
+        ASSERT_EQ(my_list.size(), size) << "push back size error";
+        my_list.push_back(T(size));
+    }
+
+    my_list.clear();
+    ASSERT_EQ(my_list.empty(), true) << "cannot clear to get empty list";
+    ASSERT_EQ(my_list.size(), 0) << "cannot clear to get size 0 list";
+    
+    //clear an empty list
+    my_list.clear();
+    ASSERT_EQ(my_list.empty(), true) << "cannot clear to get empty list";
+    ASSERT_EQ(my_list.size(), 0) << "cannot clear to get size 0 list";
+
+
+    //re insert to make sure no memory leak
+    for (size_t size = 0; size < 1000; ++size) {
+        ASSERT_EQ(my_list.size(), size);
+        my_list.push_back(T(size));
+    }
+}
+
+TEST(ListTest, TestBasicListConstruction) {
     my_stl::list<int> list;
     std::list<int> list2;
     ASSERT_EQ(list.empty(), true) << "failed to create empty list";
@@ -14,4 +48,12 @@ TEST(ListTest, TestListConstruction) {
     list.push_back(2);
     ASSERT_EQ(list.empty(), false);
     ASSERT_EQ(list.size(), 2);
+}
+
+
+TEST(ListTest, TestListPushBackAndClear) {
+    my_stl::list<int> list_int;
+    testPushBackAndClearTemplate(list_int);
+    my_stl::list<Test_FOO_Heap> list_heap;
+    testPushBackAndClearTemplate(list_heap);
 }
