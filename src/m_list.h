@@ -40,6 +40,20 @@ namespace my_stl {
         using value_type = _Tp;
         using iterator_category = bidirectional_iterator_tag;
         using difference_type = std::ptrdiff_t;
+		using __node_ptr_type = __list_node<_Tp>*;
+
+		//this is the actually node pointer
+		__node_ptr_type node_ptr;
+		explicit __list_iterator_base(__node_ptr_type __node_ptr) : node_ptr(__node_ptr) {}
+		__list_iterator_base(): node_ptr(nullptr) {}
+
+		bool operator==(const __list_iterator_base& __other) const {
+			return node_ptr == __other.node_ptr;
+		}
+
+		bool operator!=(const __list_iterator_base& __other) const {
+			return node_ptr != __other.node_ptr;
+		}
     };
         
 
@@ -48,41 +62,22 @@ namespace my_stl {
     struct __list_iterator: public __list_iterator_base<_Tp> {
         using pointer = _Tp*;
         using reference = _Tp&;
-        
-        using __node_ptr_type = __list_node<_Tp>*;
+		using __iterator_base = __list_iterator_base<_Tp>;
 
-        __node_ptr_type node_ptr;
+        explicit __list_iterator(typename __iterator_base::__node_ptr_type __node_ptr): __iterator_base(__node_ptr){}
+        __list_iterator(): __iterator_base(){};
+        __list_iterator(const __list_iterator& other): __iterator_base(other.node_ptr){}
 
-        explicit __list_iterator(__node_ptr_type __node_ptr): node_ptr(__node_ptr){}
-        __list_iterator(): node_ptr(nullptr){};
-        __list_iterator(const __list_iterator& other): node_ptr(other.node_ptr){}
-
-        __list_iterator& operator=(const __list_iterator& rhs) {
-            if (this != &rhs) {
-                node_ptr = rhs.node_ptr;
-            }
-            return *this;
-        }
-
-        bool operator==(const __list_iterator& rhs) {
-            return node_ptr == rhs.node_ptr;
-        }
-        
-
-        bool operator!=(const __list_iterator& rhs) {
-            return !operator=(rhs);
-        }
-        
         reference operator*() {
-            return node_ptr -> val;
+            return this -> node_ptr -> val;
         }
 
         pointer operator->() {
-            return &(node_ptr -> val);
+            return &(this -> node_ptr -> val);
         }
 
         __list_iterator& operator++() {
-            node_ptr = node_ptr -> next;
+            this -> node_ptr = this -> node_ptr -> next;
             return *this;
         }
 
@@ -92,9 +87,8 @@ namespace my_stl {
             return _temp;
         }
 
-
         __list_iterator& operator--() {
-            node_ptr = node_ptr -> prev;
+            this -> node_ptr = this -> node_ptr -> prev;
             return *this;
         }
 
@@ -110,45 +104,25 @@ namespace my_stl {
     struct __list_const_iterator: public __list_iterator_base<_Tp>{
         using pointer = const _Tp*;
         using reference = const _Tp&;
+		using __iterator_base = __list_iterator_base<_Tp>;
 
-        using __node_ptr_type = const __list_node<_Tp>*;
-        
-        __node_ptr_type node_ptr;
-
-        explicit __list_const_iterator(__node_ptr_type __node_ptr): node_ptr(__node_ptr){};
-         __list_const_iterator(): node_ptr(nullptr){};
-        __list_const_iterator(const __list_const_iterator& other): node_ptr(other.node_ptr){}
+        explicit __list_const_iterator(typename __iterator_base::__node_ptr_type __node_ptr): __iterator_base(__node_ptr){}
+        __list_const_iterator(): __iterator_base(){};
+        __list_const_iterator(const __list_const_iterator& other): __iterator_base(other.node_ptr){}
 
         //implicit conversion from plain iterator
-        __list_const_iterator(const __list_iterator<_Tp>& other): node_ptr(other.node_ptr) {}
+        __list_const_iterator(const __list_iterator<_Tp>& other): __iterator_base(other.node_ptr) {}
 
-        __list_const_iterator& operator=(const __list_const_iterator& rhs) {
-            if (this != &rhs) {
-                node_ptr = rhs.node_ptr;
-            }
-            return *this;
+        reference operator*() const{
+            return this -> node_ptr -> val;
         }
 
-
-        bool operator==(const __list_const_iterator& rhs) {
-            return node_ptr == rhs.node_ptr;
-        }
-        
-
-        bool operator!=(const __list_const_iterator& rhs) {
-            return !operator==(rhs);
-        }
-        
-        reference operator*() {
-            return node_ptr -> val;
-        }
-
-        pointer operator->() {
-            return &(node_ptr -> val);
+        pointer operator->() const{
+            return &(this -> node_ptr -> val);
         }
 
         __list_const_iterator& operator++() {
-            node_ptr = node_ptr -> next;
+            this -> node_ptr = this -> node_ptr -> next;
             return *this;
         }
 
@@ -158,9 +132,8 @@ namespace my_stl {
             return _temp;
         }
 
-
         __list_const_iterator& operator--() {
-            node_ptr = node_ptr -> prev;
+            this -> node_ptr = this -> node_ptr -> prev;
             return *this;
         }
 
@@ -197,15 +170,32 @@ namespace my_stl {
             using data_allocator = my_simple_alloc<__node, Alloc>;
 
 
-            __node* __get_node(size_type n) {
-                return data_allocator::allocate(n);
+            __node* __get_node() {
+                return data_allocator::allocate(1);
             }
+
+			void __destroy_node(__node *p) noexcept {
+				data_allocator::deallocate(p, 1);
+			}
+
+			__node* __create_node(const value_type& val) {
+				__node* __a_node = __get_node();
+				construct(&__a_node->val, val);
+				return __a_node;
+			}
 
         public:
 
-            list(): __end(__get_node(1)) {
+            list(): __end(__get_node()) {
                 __end -> next = __end -> prev = __end;
             }
+
+			~list() {
+				clear();
+                //note we never initialize the value of __end -> val, so we never need to 
+                //call the destructor of __end -> val
+				__destroy_node(__end);
+			}
 
             iterator begin() {
                 return iterator(__end -> next);
@@ -231,6 +221,17 @@ namespace my_stl {
                 return const_iterator(__end);
             }
 
+			void clear() noexcept {
+				__node_ptr __ptr = __end->next;
+				while (__ptr != __end) {
+					__node_ptr temp = __ptr->next;
+					destroy(&__ptr->val);
+					__destroy_node(__ptr);
+					__ptr = temp;
+				}
+                __end -> prev = __end -> next = __end;
+			}
+
             bool empty() const {
                 return __end -> next == __end;
             }
@@ -240,7 +241,7 @@ namespace my_stl {
             }
 
             void push_back(const value_type& value) {
-                __node_ptr __tail = new __node(value);
+				__node_ptr __tail = __create_node(value);
                 __tail -> next = __end;
                 __tail -> prev = __end -> prev;
                 __end -> prev -> next = __tail;
