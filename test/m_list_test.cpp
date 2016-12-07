@@ -10,6 +10,21 @@ inline void assertListSize(const std::list<T>& std_list, const my_stl::list<T>& 
     ASSERT_EQ(std_list.size(), my_list.size());
 }
 
+
+template <typename T>
+inline void assertListEqual(const std::list<T>& std_list, const my_stl::list<T>& my_list) {
+    ASSERT_EQ(std_list.size(), my_list.size()) << "given two different list to be tested";
+    if (my_list.empty())    return;
+    ASSERT_EQ(std_list.front() == my_list.front(), true);
+    ASSERT_EQ(std_list.back() == my_list.back(), true);
+    auto m_begin = my_list.cbegin();
+    for (auto s_begin = std_list.cbegin();
+           s_begin != std_list.cend(); ++s_begin, ++m_begin) {
+        ASSERT_EQ(*s_begin == *m_begin, true);
+    }
+    ASSERT_EQ(m_begin == my_list.cend(), true);
+}
+
 template<typename T>
 inline void testPushBackAndClearTemplate(my_stl::list<T>& my_list){
     ASSERT_EQ(my_list.empty(), true) << "not given empty list";
@@ -37,6 +52,24 @@ inline void testPushBackAndClearTemplate(my_stl::list<T>& my_list){
     }
 }
 
+//fixture
+class ListTestFixture: public ::testing::Test {
+    protected:
+        std::list<int> sl_i;
+        my_stl::list<int> ml_i;
+        std::list<Test_FOO_Simple> sl_s;
+        my_stl::list<Test_FOO_Simple> ml_s;
+
+        std::list<Test_FOO_Heap> sl_h;
+        my_stl::list<Test_FOO_Heap> ml_h;
+
+        std::list<Test_FOO_Array> sl_a;
+        my_stl::list<Test_FOO_Array> ml_a;
+
+        std::list<std::string> sl_str;
+        my_stl::list<std::string> ml_str;
+};
+
 TEST(ListTest, TestBasicListConstruction) {
     my_stl::list<int> list;
     std::list<int> list2;
@@ -56,4 +89,36 @@ TEST(ListTest, TestListPushBackAndClear) {
     testPushBackAndClearTemplate(list_int);
     my_stl::list<Test_FOO_Heap> list_heap;
     testPushBackAndClearTemplate(list_heap);
+}
+
+
+
+template<typename T>
+inline void testPushInsertTemplate(std::list<T>& std_list, my_stl::list<T>& my_list) {
+    assertListEqual(std_list, my_list);
+    for (int i = 0; i < 100; ++i) {
+        my_list.push_back(T(i));
+        std_list.push_back(T(i));
+        assertListEqual(std_list, my_list);
+        //obtain a iterator and increment it random times
+        auto s_it = std_list.cbegin();
+        auto m_it = my_list.cbegin();
+        size_t incre = rand() % (i + 1);
+        for (; incre > 0; --incre, ++s_it, ++m_it);
+        auto my_insertion = my_list.insert(m_it, T(i * 2));
+        auto std_insertion = std_list.insert(s_it, T(i * 2));
+        if (std_insertion != std_list.cend()) {
+            ASSERT_EQ(*std_insertion == *my_insertion, true);
+        }
+        assertListEqual(std_list, my_list);
+    }
+}
+
+
+
+TEST_F(ListTestFixture, TestPushAndInsert) {
+    testPushInsertTemplate(sl_i, ml_i);
+    testPushInsertTemplate(sl_a, ml_a);
+    testPushInsertTemplate(sl_s, ml_s);
+    testPushInsertTemplate(sl_h, ml_h);
 }
