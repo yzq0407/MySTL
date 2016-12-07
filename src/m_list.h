@@ -144,8 +144,6 @@ namespace my_stl {
         }
     };
 
-
-
     template <typename _Tp, typename Alloc = __malloc_alloc<0>>
     class list {
         protected:
@@ -272,7 +270,19 @@ namespace my_stl {
             
             inline void pop_front();
 
+            //remove the same value
+            inline void remove(const value_type& value);
+
+            //unique will remove all the adjacent duplicate values 
+            inline void unique();
+
     };
+
+    //non member swap function, no throw
+    template <typename _Tp, typename Alloc>
+    void swap(list<_Tp, Alloc>& lhs, list<_Tp, Alloc>& rhs) noexcept{
+        lhs.swap(rhs);
+    }
 
     //implementations
     template<typename _Tp, typename Alloc>
@@ -314,6 +324,34 @@ namespace my_stl {
     template<typename _Tp, typename Alloc>
     void list<_Tp, Alloc>::pop_front() {
         erase(cbegin());
+    }
+
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::remove(const _Tp& value) {
+        const_iterator head = begin();
+        const_iterator tail = end();
+        while (head != tail) {
+            iterator next = head;
+            ++next;
+            if (*head == value)    erase(head);
+            head = next;
+        }
+    }
+
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::unique() {
+        const_iterator head = begin();
+        const_iterator tail = end();
+        const_iterator next = head;
+        while (++next != tail) {
+            if (*head == *next) {
+                erase(next);
+            }
+            else {
+                head = next;
+            }
+            next = head;
+        }
     }
 }
 
