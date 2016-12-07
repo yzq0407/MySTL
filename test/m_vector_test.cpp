@@ -24,7 +24,7 @@ TEST(VectorTest, TestSimpleConstruction) {
         my_stl::vector<int> m_vector;
         ASSERT_EQ(s_vector.size(), m_vector.size()) << "Empty vector construction failed";
     }
-    for (int size = 1; size < 10000; size += 10) {
+    for (int size = 1; size < 100; size += 10) {
         std::vector<int> s_vector(size);
         my_stl::vector<int> m_vector(size);
         ASSERT_EQ(s_vector.size(), m_vector.size()) << "Constructing vector with size " 
@@ -34,7 +34,7 @@ TEST(VectorTest, TestSimpleConstruction) {
                 << "th element with vector of size " << size << " failed";
         }
     }
-    for (int size = 1; size < 10000; size += 10) {
+    for (int size = 1; size < 100; size += 10) {
         std::vector<int> s_vector(size, 1564);
         my_stl::vector<int> m_vector(size, 1564);
         ASSERT_EQ(s_vector.size(), m_vector.size());
