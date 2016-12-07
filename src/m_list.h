@@ -146,7 +146,7 @@ namespace my_stl {
 
 
 
-    template <typename _Tp, typename Alloc = alloc>
+    template <typename _Tp, typename Alloc = __malloc_alloc<0>>
     class list {
         protected:
             //the following are required by stl standard;
@@ -157,8 +157,6 @@ namespace my_stl {
             using const_pointer = const _Tp*;
             using reference = _Tp&;
             using const_reference = const _Tp&;
-            using iterator = __list_iterator<_Tp>;
-            using const_iterator = __list_const_iterator<_Tp>;
 
             //these are node required by stl standard;
             using __node = __list_node<_Tp>;
@@ -169,8 +167,7 @@ namespace my_stl {
             __node_ptr __end;
             using data_allocator = my_simple_alloc<__node, Alloc>;
 
-
-            __node* __get_node() {
+            __node* __get_node() const {
                 return data_allocator::allocate(1);
             }
 
@@ -178,14 +175,16 @@ namespace my_stl {
 				data_allocator::deallocate(p, 1);
 			}
 
-			__node* __create_node(const value_type& val) {
+			__node* __create_node(const value_type& val) const{
 				__node* __a_node = __get_node();
 				construct(&__a_node->val, val);
 				return __a_node;
 			}
 
         public:
-
+            using iterator = __list_iterator<_Tp>;
+            using const_iterator = __list_const_iterator<_Tp>;
+            
             list(): __end(__get_node()) {
                 __end -> next = __end -> prev = __end;
             }
@@ -197,28 +196,50 @@ namespace my_stl {
 				__destroy_node(__end);
 			}
 
-            iterator begin() {
+            iterator begin() noexcept{
                 return iterator(__end -> next);
             }
 
-            const_iterator begin() const{
+            const_iterator begin() const noexcept{
                 return const_iterator(__end -> next);
             }
 
-            iterator end() {
+            iterator end() noexcept {
                 return iterator(__end);
             }
             
-            const_iterator end() const{
+            const_iterator end() const noexcept{
                 return const_iterator(__end);
             }
 
-            const_iterator cbegin() const{
+            const_iterator cbegin() const noexcept{
                 return const_iterator(__end -> next);
             };
 
-            const_iterator cend() const {
+            const_iterator cend() const noexcept{
                 return const_iterator(__end);
+            }
+
+            reference front() {
+                return *begin();
+            }
+
+            const_reference front() const{
+                return *cbegin();
+            }
+
+            reference back() {
+                return *(--end());
+            }
+
+            const_reference back() const {
+                return *(--cend());
+            }
+
+            void swap(list& other) noexcept {
+                __node_ptr temp = __end;
+                this -> __end = other.__end;
+                other.__end = temp;
             }
 
 			void clear() noexcept {
@@ -232,22 +253,68 @@ namespace my_stl {
                 __end -> prev = __end -> next = __end;
 			}
 
+            iterator insert(const_iterator __position, const value_type& value);
+            iterator erase(const_iterator __position);
+
             bool empty() const {
                 return __end -> next == __end;
             }
 
-            size_type size() {
+            size_type size() const noexcept{
                 return distance(cbegin(), cend());
             }
 
-            void push_back(const value_type& value) {
-				__node_ptr __tail = __create_node(value);
-                __tail -> next = __end;
-                __tail -> prev = __end -> prev;
-                __end -> prev -> next = __tail;
-                __end -> prev = __tail;
-            }
+            inline void push_back(const value_type& value);
+
+            inline void push_front(const value_type& value);
+
+            inline void pop_back();
+            
+            inline void pop_front();
+
     };
+
+    //implementations
+    template<typename _Tp, typename Alloc>
+    typename list<_Tp, Alloc>::iterator 
+    list<_Tp, Alloc>::insert(list::const_iterator __position, const _Tp& value) {
+        __node_ptr __a_node = __create_node(value);
+        __a_node -> next = __position.node_ptr;
+        __a_node -> prev = __position.node_ptr -> prev;
+        __position.node_ptr -> prev -> next = __a_node;
+        __position.node_ptr -> prev = __a_node;
+        return iterator(__a_node);
+    }
+
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::push_back(const _Tp& value) {
+        insert(cend(), value);
+    }
+
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::push_front(const _Tp& value) {
+        insert(cbegin(), value);
+    }
+
+    template<typename _Tp, typename Alloc>
+    __list_iterator<_Tp> list<_Tp, Alloc>::erase(list::const_iterator __position) {
+        iterator temp (__position.node_ptr -> next);
+        __position.node_ptr -> prev -> next = __position.node_ptr -> next;
+        __position.node_ptr -> next -> prev = __position.node_ptr -> prev;
+        destroy(&__position.node_ptr -> val);
+        __destroy_node(__position.node_ptr);
+        return temp;
+    }
+
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::pop_back() {
+        erase(--cend());
+    }
+
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::pop_front() {
+        erase(cbegin());
+    }
 }
 
 #endif
