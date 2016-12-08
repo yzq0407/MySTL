@@ -122,3 +122,52 @@ TEST_F(ListTestFixture, TestPushAndInsert) {
     testPushInsertTemplate(sl_s, ml_s);
     testPushInsertTemplate(sl_h, ml_h);
 }
+
+
+template<typename T>
+inline void testListInsertTemplate(std::list<T>& std_list, my_stl::list<T>& my_list) {
+    ASSERT_EQ(std_list.size(), 0);
+    ASSERT_EQ(my_list.size(), 0);
+    std_list.insert(std_list.begin(), {T(4), T(-1), T(13), T(12)});
+    my_list.insert(my_list.end(), {T(4), T(-1), T(13), T(12)});
+    assertListEqual(std_list, my_list);
+    auto pos_std = std_list.end();
+    auto pos_my = my_list.end();
+    --pos_std;
+    --pos_my;
+    --pos_std;
+    --pos_my;
+    std_list.insert(pos_std, 12, T(100));
+    my_list.insert(pos_my, 12, T(100));
+    assertListEqual(std_list, my_list);
+
+    std_list.insert(std_list.end(), 0, T(1));
+    my_list.insert(my_list.end(), 0, T(1));
+    assertListEqual(std_list, my_list);
+
+    std_list.insert(++std_list.begin(), {T(2), T(3)});
+    my_list.insert(++my_list.begin(), {T(2), T(3)});
+    assertListEqual(std_list, my_list);
+
+    std::vector<T> ua = {};
+    std_list.insert(std_list.end(), ua.begin(), ua.end());
+    my_list.insert(my_list.end(), ua.begin(), ua.end());
+    assertListEqual(std_list, my_list);
+
+    ua = {T(1), T(2), T(3)};
+    std_list.insert(std_list.end(), ua.begin(), ua.end());
+    my_list.insert(my_list.end(), ua.begin(), ua.end());
+    assertListEqual(std_list, my_list);
+
+    std_list.clear();
+    my_list.clear();
+    assertListEqual(std_list, my_list);
+}
+
+TEST_F(ListTestFixture, TestListInsert) {
+    testListInsertTemplate(sl_i, ml_i);
+    testListInsertTemplate(sl_a, ml_a);
+    testListInsertTemplate(sl_s, ml_s);
+    testListInsertTemplate(sl_h, ml_h);
+}
+
