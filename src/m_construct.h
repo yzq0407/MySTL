@@ -19,20 +19,20 @@ namespace my_stl {
     //if it is just a single pointer, call destructor, shouldn't incur too much overhead
     //even it has a trivial dtor
     template <typename TYPE>
-    inline void destroy (TYPE* tp) {
+    inline void destroy (TYPE* tp) noexcept{
         tp -> ~TYPE();
     }
 
     //helper function to extract whether a type has a default dtor
     template <typename TYPE>
-    inline typename __type_traits<TYPE>::has_trivial_dtor __has_trivial_dtor(const TYPE& type) {
+    inline typename __type_traits<TYPE>::has_trivial_dtor __has_trivial_dtor(const TYPE& type) noexcept{
         return typename __type_traits<TYPE>::has_trivial_dtor();
     }
 
     //if we want to destroy the object in the range of [start, end), it is important that the
     //dtor is not trivial, otherwise we are doing useless for-loop
     template <typename ForwardIterator>
-    inline void destroy (ForwardIterator first, ForwardIterator last) {
+    inline void destroy (ForwardIterator first, ForwardIterator last) noexcept{
         //depend on whether we have
         __destroy(first, last, __has_trivial_dtor(typename iterator_traits<ForwardIterator>::value_type()));
     }
@@ -40,12 +40,12 @@ namespace my_stl {
 
     //overloaded function for destroy, for trivial dtor type
     template <typename ForwardIterator>
-    inline void __destroy (ForwardIterator first, ForwardIterator last, __true_type) {
+    inline void __destroy (ForwardIterator first, ForwardIterator last, __true_type) noexcept{
     }
 
     //if there is no trivial dtor, call this function
     template <typename ForwardIterator>
-    inline void __destroy (ForwardIterator first, ForwardIterator last, __false_type) {
+    inline void __destroy (ForwardIterator first, ForwardIterator last, __false_type) noexcept{
         for (; first != last; ++first) {
             destroy (&*first);
         }

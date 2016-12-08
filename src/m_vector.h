@@ -4,8 +4,9 @@
 #define __MY_STL_VECTOR_H
 
 #include "m_memory.h"  //for allocator
+#include "m_algobase.h"  //for copy function
 //#include <stdio.h>
-    
+
 namespace my_stl {
     template <typename _Tp, typename Alloc = alloc>
     class vector {
@@ -37,11 +38,11 @@ namespace my_stl {
             // helper function to allocate n object and initialize it by default value
             iterator allocate_and_fill(size_type n, const _Tp& value) {
                 iterator res = data_allocator.allocate(n);
-                uninitialized_fill (res, res + n, value);
+                my_stl::uninitialized_fill (res, res + n, value);
                 return res;
             }
 
-            void deallocate() {
+            void deallocate() noexcept {
                 if (!start) return;
                 destroy(start, last);
                 data_allocator.deallocate(start, end_of_storage - start);
@@ -51,6 +52,26 @@ namespace my_stl {
             void fill_initialize (size_type n, const _Tp& value) {
                 start = allocate_and_fill(n, value);
                 end_of_storage = last = start + n;
+            }
+
+            template <typename RandomAccessIterator>
+            inline void __construct_from_iterator(RandomAccessIterator _first,
+                    RandomAccessIterator _last, random_access_iterator_tag)
+            {
+                auto n = _last - _first;
+                start = data_allocator.allocate(n);
+                last = end_of_storage = start + n;
+                for (iterator it = start;  n != 0; --n, ++it, ++_first) {
+                    construct(it, *_first);
+                }
+            }
+
+            template <typename InputIterator>
+            inline void __construct_from_iterator(InputIterator _first, 
+                    InputIterator _last, input_iterator_tag) {
+                for (; _first != _last; ++_first) {
+                    push_back(*_first);
+                }
             }
 
         public:
@@ -80,7 +101,7 @@ namespace my_stl {
             }
 
             //ctors
-            vector(): start(nullptr), last(nullptr), end_of_storage(nullptr){}
+            vector() noexcept: start(nullptr), last(nullptr), end_of_storage(nullptr){}
 
             vector(size_type n, const _Tp& value) {
                 fill_initialize(n, value);
@@ -98,17 +119,51 @@ namespace my_stl {
                 fill_initialize(n, _Tp());
             }
 
-            //this change the behavior of a std::vector, while return a new allocated memory
             vector(const vector<_Tp>& rhs) {
                 //copy constructor, need to allocate and initialize all the elements
                 start = data_allocator.allocate(rhs.size());
-                end_of_storage = last = uninitialized_copy(rhs.start, rhs.last, start);
+                end_of_storage = last = my_stl::uninitialized_copy(rhs.start, rhs.last, start);
             }
 
-            const vector<_Tp>& operator=(vector<_Tp> rhs) {
-                swap(rhs);
+            //c++11
+            vector(std::initializer_list<_Tp> _il) {
+                if (_il.size() > 0) {
+                    start = data_allocator.allocate(_il.size());
+                    end_of_storage = last = my_stl::uninitialized_copy(_il.begin(), _il.end(), start);
+                }
+            }
+
+            vector<_Tp>& operator=(const vector<_Tp>& rhs) {
+                //note this is the only exception safe implementation which also also
+                //overloading with move assignment operator
+                vector<_Tp> temp(rhs);
+                swap(temp);
                 return *this;
             }
+
+            //move constructor
+            vector(vector<_Tp>&& rhs) noexcept: start(rhs.start), last(rhs.last), end_of_storage(rhs.end_of_storage) {
+                rhs.start = rhs.last = rhs.end_of_storage = nullptr;
+            }
+
+            //move assignment
+            const vector<_Tp>& operator=(vector<_Tp> &&rhs) noexcept {
+                if (this != &rhs) {
+                    start = rhs.start;
+                    last = rhs.last;
+                    end_of_storage = rhs.end_of_storage;
+                    rhs.start = rhs.last = rhs.end_of_storage = nullptr;
+                }
+                return *this;
+            }
+
+
+            template<typename InputIterator>
+            vector(InputIterator _first, InputIterator _last) {
+                //construct vector based on the iterator type, if it is random iterator, we get the distance before iterate it
+                __construct_from_iterator(_first, _last, typename iterator_traits<InputIterator>::iterator_category());
+            }
+                
 
             bool operator==(const vector<_Tp>& rhs) const {
                 if (size() != rhs.size())   return false;
@@ -117,10 +172,13 @@ namespace my_stl {
                 }
                 return true;
             }
-                
+
+            bool operator!=(const vector<_Tp>& rhs) const {
+                return !operator==(rhs);
+            }
 
             //swap function, should implement std::swap but let's keep it as it is 
-            void swap(vector<_Tp> &rhs) {
+            void swap(vector<_Tp> &rhs) noexcept{
                 iterator start_temp = start;
                 iterator last_temp = last;
                 iterator end_temp = end_of_storage;
@@ -132,8 +190,7 @@ namespace my_stl {
                 rhs.end_of_storage = end_temp;
             }
                 
-                
-
+            //dtor
             ~vector() {
                 deallocate();
             }
@@ -170,14 +227,7 @@ namespace my_stl {
             }
 
             void pop_back() {
-                //the semantics is that if the the vector is empty, do nothing
-                if (start) {
-                    destroy(--last);
-                    if (start == last)  {
-                        deallocate();
-                        start = last = end_of_storage = nullptr;
-                    }
-                }
+                destroy(--last);
             }
 
             void resize (size_type new_size, const _Tp& x) {
@@ -213,11 +263,105 @@ namespace my_stl {
             void clear () {
                 if (start) {
                     destroy(start, last);
-                    data_allocator.deallocate(start, end_of_storage - start);
-                    start = last = end_of_storage = nullptr;
+                    last = start;
+                }
+            }
+
+            //remove elements in the range [head, tail)
+            iterator erase(iterator head, iterator tail) {
+                //destroy the range first
+                if (head >= tail)    return head;
+                iterator new_last = copy(tail, last, head);
+                destroy(new_last, last);
+                last = new_last;
+                return head;
+            }
+
+            //remove one single elements in the index
+            iterator erase(iterator position) {
+                if (position + 1 != end()) {
+                    copy(position + 1, last, position);
+                }
+                --last;
+                destroy(last);
+                return position;
+            }
+
+            //the insert function
+            iterator insert(const iterator pos, const _Tp& value);
+
+            iterator insert(const iterator pos, size_type count, const _Tp& value);
+
+            //the reserve function
+            void reserve(size_type size) {
+                if (capacity() < size) {
+                    iterator new_start = data_allocator.allocate(size);
+                    iterator new_last = uninitialized_copy(start, last, new_start);
+                    deallocate();
+                    start = new_start;
+                    last = new_last;
+                    end_of_storage = start + size;
                 }
             }
     };
+
+
+    template <typename _Tp, typename Alloc>
+    typename vector<_Tp, Alloc>::iterator vector<_Tp, Alloc>::insert(const typename vector<_Tp, Alloc>::iterator pos,
+            const _Tp& value){
+        return insert(pos, 1, value);
+    }
+
+    template <typename _Tp, typename Alloc>
+    typename vector<_Tp, Alloc>::iterator vector<_Tp, Alloc>::insert(
+            const typename vector<_Tp, Alloc>::iterator pos,
+            typename vector<_Tp, Alloc>::size_type count, const _Tp& value){
+        if (count) {         //only insert if n is not 0
+            if (end_of_storage - last >= count) {     //if there is enough space
+                //if the end already passed the pos + n, we need to copy [end - n, end)
+                //to [end, end + n)
+                if (last - pos >= count) {
+                    my_stl::uninitialized_copy(last - count, last, last);
+                    //then copy [pos, end - n) to [pos + n, end)
+                    //note we should use copy_backward, otherwise, there will be corrupted element
+                    my_stl::copy_backward(pos, last - count, last);
+                    //fill element in the range [pos, pos + n)
+                    my_stl::fill(pos, pos + count, value); 
+                }
+                //in this case, end is less than pos + n
+                else {
+                    //copy [pos, last) into [last + n - (last - pos), last + n)
+                    my_stl::uninitialized_copy(pos, last, count + pos);
+                    //fill [post, last) with value
+                    my_stl::fill(pos, last, value);
+                    //initialize [last, pos + n) with value
+                    my_stl::uninitialized_fill_n(last, pos + count - last, value);
+                }
+                last += count;
+            }
+            else {                  //there is not enough space need to allocate enough space
+                //printf ("start inserting----alocate new memory\n");
+                //we need to determine how much space is allocated 2 times or right amount
+                const size_type old_size = size();
+                //printf ("old size is %d\n", (int)old_size);
+                const size_type new_size = old_size + (count > old_size? count: old_size);
+                //printf ("new size is %d\n", (int)new_size);
+                iterator new_first = data_allocator.allocate(new_size);
+                //copy the first part
+                iterator new_last = uninitialized_copy(start, pos, new_first);
+                //fill the value
+                new_last = uninitialized_fill_n(new_last, count, value);
+                //copy the last part
+                new_last = uninitialized_copy(pos, last, new_last);
+                //deallocate the memmoty
+                deallocate();
+                start = new_first;
+                last = new_last;
+                end_of_storage = start + new_size;
+            }
+        }
+        return start;
+    }
 }
 
 

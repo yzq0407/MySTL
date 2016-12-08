@@ -53,30 +53,43 @@ bool Test_FOO_Array::operator!=(const Test_FOO_Array& rhs) const {
 
 
 //FOO_Heap
-Test_FOO_Heap::Test_FOO_Heap() {
-    m1 = new int(-101);
-    m2 = new Test_FOO_Simple(12);
+Test_FOO_Heap::Test_FOO_Heap():m1(new int(-101)), m2(new Test_FOO_Simple(12)) {
 }
 
-Test_FOO_Heap::Test_FOO_Heap(int val) {
-    m1 = new int(val);
-    m2 = new Test_FOO_Simple(val);
+Test_FOO_Heap::Test_FOO_Heap(int val): m1(new int(val)), m2(new Test_FOO_Simple(val)){
 }
 
-Test_FOO_Heap::Test_FOO_Heap(const Test_FOO_Simple& foo) {
-    m1 = new int(-101);
-    m2 = new Test_FOO_Simple(foo);
+Test_FOO_Heap::Test_FOO_Heap(const Test_FOO_Simple& foo): m1(new int(-101)),
+    m2(new Test_FOO_Simple(foo)) {
 }
 
-Test_FOO_Heap::Test_FOO_Heap(const Test_FOO_Heap& foo) {
-    m1 = new int(*foo.m1);
-    m2 = new Test_FOO_Simple(*foo.m2);
+Test_FOO_Heap::Test_FOO_Heap(const Test_FOO_Heap& foo): m1(new int(*foo.m1)),
+    m2(new Test_FOO_Simple(*foo.m2)) {
 }
 
-const Test_FOO_Heap& Test_FOO_Heap::operator=(Test_FOO_Heap rhs) {
-    swap(rhs);
+//offer strong exception guarantee
+Test_FOO_Heap& Test_FOO_Heap::operator=(const Test_FOO_Heap& rhs) {
+    Test_FOO_Heap temp(rhs);
+    swap(temp);
     return *this;
 }
+
+//move constructor and move assignment
+Test_FOO_Heap& Test_FOO_Heap::operator=(Test_FOO_Heap&& rhs) noexcept {
+    delete(m1);
+    delete(m2);
+    m1 = rhs.m1;
+    m2 = rhs.m2;
+    rhs.m1 = nullptr;
+    rhs.m2 = nullptr;
+    return *this;
+}
+
+Test_FOO_Heap::Test_FOO_Heap(Test_FOO_Heap&& foo): m1(foo.m1), m2(foo.m2) {
+    foo.m1 = nullptr;
+    foo.m2 = nullptr;
+}
+
 
 bool Test_FOO_Heap::operator==(const Test_FOO_Heap& rhs) const{
     return *m1 == *rhs.m1 && *m2 == *rhs.m2;
