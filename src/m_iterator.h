@@ -118,7 +118,7 @@ namespace my_stl {
     //combined distance function
     template <typename InputIterator>
     inline typename iterator_traits<InputIterator>::difference_type distance(InputIterator first, InputIterator last) {
-        return __distance(first, last, iterator_traits<InputIterator>::iterator_category());
+        return __distance(first, last, typename iterator_traits<InputIterator>::iterator_category());
     }
 
     //c++11 functions

@@ -142,6 +142,64 @@ namespace my_stl {
         typedef __true_type has_trivial_dtor;
         typedef __true_type is_POD_type;
     };
+
+
+    //---------------------integer traits---------------------
+    template<typename _Tp>
+    struct _Is_integer {
+        typedef __false_type integral;
+    };
+
+    //specialized from
+    template<>
+    struct _Is_integer<int> {
+        typedef __true_type integral;
+    };
+
+    template<>
+    struct _Is_integer<unsigned int> {
+        typedef __true_type integral;
+    };
+
+    template<>
+    struct _Is_integer<unsigned short> {
+        typedef __true_type integral;
+    };
+    
+    template<>
+    struct _Is_integer<short> {
+        typedef __true_type integral;
+    };
+    
+    template<>
+    struct _Is_integer<long> {
+        typedef __true_type integral;
+    };
+
+    template<>
+    struct _Is_integer<unsigned long> {
+        typedef __true_type integral;
+    };
+
+    template<>
+    struct _Is_integer<long long> {
+        typedef __true_type integral;
+    };
+    
+    template<>
+    struct _Is_integer<unsigned long long> {
+        typedef __true_type integral;
+    };
+    
+    template<>
+    struct _Is_integer<char> {
+        typedef __true_type integral;
+    };
+
+    template<>
+    struct _Is_integer<unsigned char> {
+        typedef __true_type integral;
+    };
 }
 
 #endif

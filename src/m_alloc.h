@@ -14,7 +14,7 @@ namespace my_stl {
     //just wrap the new and delete under the allocate and deallocate method
     //which is quite similar to the simple_alloc class in SGI allocator
     template <class _Tp>
-    class naive_allocator {
+    class new_allocator {
         //by STL standard, these are the necessary interface for allocator
         public:
             //typename can be accessed using scope operator, but when used, need to 
@@ -29,7 +29,7 @@ namespace my_stl {
 
             //nested class template with only one data member
             template <class _Tp1> struct rebind{
-                typedef naive_allocator<_Tp1> other;
+                typedef new_allocator<_Tp1> other;
             };
             // auto generated 
             /*                 //constructor */
@@ -45,13 +45,13 @@ namespace my_stl {
             /*                 ~allocator(); */
 
             //get back the address of one item
-            inline pointer address(reference tp) {return &tp;}
+            inline static pointer address(reference tp) {return &tp;}
 
             //get back the const address of one item
-            inline const pointer address(const_reference tp) const{return &tp;}
+            inline static const pointer address(const_reference tp) {return &tp;}
 
             //allocator, second argument is just to enhance locality
-            inline pointer allocate(size_type n, const void* = 0) {
+            inline static pointer allocate(size_type n, const void* = 0) {
                 //set no handler for allocation
                 std::set_new_handler(nullptr);
                 pointer attempt_alloc = (pointer) (::operator new (n * (sizeof(_Tp))));
@@ -63,21 +63,24 @@ namespace my_stl {
             }
 
             //return all the memory allocated, n has to be the same as we run allocate
-            inline void deallocate(pointer p, size_type n) {
+            inline static void deallocate(pointer p, size_type n) {
                 ::operator delete(p);
             }
 
             //the max volumn
-            inline size_type max_size() const {
+            inline static size_type max_size() {
                 return UINT_MAX / sizeof (_Tp);
             }
 
             //construct x for the pointer, use placement new
-            inline void construct(pointer p, const_reference x){new (p) _Tp(x);};
+            inline static void construct(pointer p, const_reference x){new (p) _Tp(x);};
 
             //destroy this object
-            inline void destroy(pointer p) {p -> ~_Tp();};
+            inline static void destroy(pointer p) {p -> ~_Tp();};
     };
+    
+    template <typename _Tp>
+    using allocator = new_allocator<_Tp>;
 
     //
     //--------------------------first level allocator: malloc_alloc---------------------------
@@ -352,31 +355,31 @@ namespace my_stl {
             /*                 template<class _Tp1> allocator(const allocator<_Tp1>&); */
 
             //get back the address of one item
-            inline pointer address(reference tp) {return &tp;}
+            static pointer address(reference tp) {return &tp;}
 
             //get back the const address of one item
-            inline const pointer address(const_reference tp) const{return &tp;}
+            static const pointer address(const_reference tp) {return &tp;}
 
             //allocator, second argument is just to enhance locality
-            inline pointer allocate(size_type n, const void* = 0) {
+            static pointer allocate(size_type n, const void* = 0) {
                 return (pointer) Alloc::allocate(n * sizeof(_Tp));
             }
 
             //return all the memory allocated, n has to be the same as we run allocate
-            inline void deallocate(pointer p, size_type n) {
+            static void deallocate(pointer p, size_type n) {
                 Alloc::deallocate(p, n * sizeof(_Tp));
             }
 
             //the max volumn
-            size_type max_size() const {
+            static size_type max_size() {
                 return UINT_MAX / sizeof (_Tp);
             }
 
             //construct x for the pointer, use placement new
-            inline void construct(pointer p, const_reference x){new (p) _Tp(x);};
+            static void construct(pointer p, const_reference x){new (p) _Tp(x);};
 
             //destroy this object
-            inline void destroy(pointer p) {p -> ~_Tp();};
+            static void destroy(pointer p) {p -> ~_Tp();};
     };
    
 }
