@@ -171,3 +171,40 @@ TEST_F(ListTestFixture, TestListInsert) {
     testListInsertTemplate(sl_h, ml_h);
 }
 
+template<typename T>
+inline void testMoreConstructions() {
+    using my_stl::list;
+    //range fill
+    list<T> m_list (12, T(3));
+    std::list<T> s_list(12, T(3));
+    assertListEqual(s_list, m_list);
+
+    list<T> m_list2(100);
+    std::list<T> s_list2(100);
+    assertListEqual(s_list2, m_list2);
+
+    list<T> m_list3(m_list2);
+    assertListEqual(s_list2, m_list3);
+
+    list<T> m_list4(list<T>{});
+    assertListEqual(std::list<T>{}, m_list4);
+
+    list<T> m_list5(s_list.cbegin(), s_list.cend());
+    assertListEqual(s_list, m_list5);
+
+
+    /* list<T> m_list_move {T(1), T(2), T(3), T(4), T(5), T(6)}; */
+    /* std::list<T> s_list_move {T(1), T(2), T(3), T(4), T(5), T(6)}; */
+    /* list<T> m_list6(std::move(m_list_move)); */
+    /* assertListEqual(s_list_move, m_list6); */
+}
+
+TEST(ListTest, ListMoreConstructions) {
+    testMoreConstructions<int>();
+    testMoreConstructions<Test_FOO_Simple>();
+    testMoreConstructions<Test_FOO_Array>();
+    testMoreConstructions<Test_FOO_Heap>();
+}
+
+    
+
