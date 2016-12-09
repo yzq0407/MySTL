@@ -196,10 +196,26 @@ namespace my_stl {
             iterator __insert_dispatch(const_iterator __position, _InputIterator first,
                     _InputIterator last, __false_type);
 
+            //assign dispatch declaration
+            template<typename _Integer>
+            void __assign_dispatch(_Integer n, _Integer val, __true_type);
+
+            template<typename _InputIterator>
+            void __assign_dispatch(_InputIterator first, _InputIterator last, __false_type);
+
         public:
             
             //------------------------Constructors------------------------------
             list();
+            
+            explicit list(size_type n);
+
+            explicit list(size_type, const value_type& val);
+
+            //copy
+            list (const list& x);
+            //move
+            list (list&& x);
 
             list(std::initializer_list<value_type> il);
 
@@ -270,6 +286,19 @@ namespace my_stl {
 				}
                 __end -> prev = __end -> next = __end;
 			}
+
+            //--------------------------------------------------------------------------------
+            //-------------------------Assign operation --------------------------------------
+            //--------------------------------------------------------------------------------
+            //range assign, we need to dispatch through whether the type parameter is a integral
+            template<typename InputIterator>
+            void assign(InputIterator first, InputIterator last);
+            
+            //fill assign
+            void assign(size_type n, const value_type& val);
+
+            //initializer assign
+            void assign(std::initializer_list<value_type> il);
             
             //--------------------------------------------------------------------------------
             //-------------------------Insert operation --------------------------------------
@@ -278,18 +307,18 @@ namespace my_stl {
             iterator insert(const_iterator __position, const value_type& value);
 
             //fill elements insert
-            inline iterator insert(const_iterator __position, size_type n, const value_type& val);
+            iterator insert(const_iterator __position, size_type n, const value_type& val);
 
             //range insert
             template <typename InputIterator>
-            inline iterator insert(const_iterator __position, InputIterator first, InputIterator last);
+            iterator insert(const_iterator __position, InputIterator first, InputIterator last);
 
             //move insert
             /* inline iterator insert(const_iterator __position, value_type&& val); */
 
             //initializer list
             iterator insert(const_iterator __position, std::initializer_list<value_type> il);
-            //----------------------Insert operation end-------------------------------------
+            //********************Insert operation end*****************************************
 
             //-------------------------------------------------------------------------------
             //------------------------Erase operation----------------------------------------
@@ -307,19 +336,19 @@ namespace my_stl {
                 return distance(cbegin(), cend());
             }
 
-            inline void push_back(const value_type& value);
+            void push_back(const value_type& value);
 
-            inline void push_front(const value_type& value);
+            void push_front(const value_type& value);
 
-            inline void pop_back();
+            void pop_back();
             
-            inline void pop_front();
+            void pop_front();
 
             //remove the same value
-            inline void remove(const value_type& value);
+            void remove(const value_type& value);
 
             //unique will remove all the adjacent duplicate values 
-            inline void unique();
+            void unique();
 
     };
 
@@ -338,20 +367,107 @@ namespace my_stl {
     }
 
     template<typename _Tp, typename Alloc>
+    list<_Tp, Alloc>::list(size_type n): list() {
+        insert(cend(), n, _Tp());
+    }
+    
+    template<typename _Tp, typename Alloc>
+    list<_Tp, Alloc>::list(size_type n, const value_type& val): list() {
+        insert(cend(), n, val);
+    }
+
+    //copy
+    template<typename _Tp, typename Alloc>
+    list<_Tp, Alloc>::list (const list& x):list() {
+        insert(cend(), x.cbegin(), x.cend());
+    }
+    
+    //move
+    template<typename _Tp, typename Alloc>
+    list<_Tp, Alloc>::list (list&& x): __end(x.__end) {
+        x.__end = nullptr;
+    }
+    
+    //range
+    template<typename _Tp, typename Alloc>
     template<typename InputIterator>
     list<_Tp, Alloc>::list(InputIterator first, InputIterator last): list() {
         insert(cend(), first, last);
     }
 
+    //initializer list
     template<typename _Tp, typename Alloc>
     list<_Tp, Alloc>::list(std::initializer_list<value_type> il): list() {
         insert(cend(), il.begin(), il.end());
     }
 
+    //--------------------------------------------------------------------------------
+    //-------------------------Assign operation --------------------------------------
+    //--------------------------------------------------------------------------------
+    //range assign, we need to dispatch through whether the type parameter is a integral
+    template<typename _Tp, typename Alloc>
+    template<typename InputIterator>
+    void list<_Tp, Alloc>::assign(InputIterator first, InputIterator last) {
+        __assign_dispatch(first, last, _Is_integer<InputIterator>::integral());
+    }
+
+    //fill assign
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::assign(size_type n, const value_type& val) {
+        //clear and assign is a way to go, but clearly we can reuse the allocated space
+        auto iter = begin();
+        for (; n > 0 && iter != end(); ++iter, --n) {
+            *iter = val;
+        }
+        if (n > 0) {
+            //more to assign
+            insert(cend(), n, val);
+        }
+        else {
+            //clear the rest
+            erase(iter, n);
+        }
+    }
+
+    //initializer assign
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::assign(std::initializer_list<value_type> il) {
+        assign(il.begin(), il.end());
+    }
+
+    //dispatch
+    template<typename _Tp, typename Alloc>
+    template<typename _Integer>
+    void list<_Tp, Alloc>::__assign_dispatch(_Integer n, _Integer val, __true_type) {
+        assign((size_type) n, val);
+    }
+
+    //dispatch
+    template<typename _Tp, typename Alloc>
+    template<typename _InputIterator>
+    void list<_Tp, Alloc>::__assign_dispatch(_InputIterator first, _InputIterator last, __false_type) {
+        //reuse the allocated space
+        auto iter = begin();
+        for (; iter != end(), first != last; ++iter, ++first) {
+            *iter = *first;
+        }
+        if (iter == end()) {
+            insert(cend(), first, last);
+        }
+        else {
+            erase(iter, cend());
+        }
+    }
+
+
+    
+    //--------------------------------------------------------------------------------
+    //-------------------------Insert operation --------------------------------------
+    //--------------------------------------------------------------------------------
     //implementations
     template<typename _Tp, typename Alloc>
     typename list<_Tp, Alloc>::iterator 
-    list<_Tp, Alloc>::insert(list::const_iterator __position, const _Tp& value) {
+    inline list<_Tp, Alloc>::insert(list::const_iterator __position, const _Tp& value) {
         __node_ptr __a_node = __create_node(value);
         __a_node -> next = __position.node_ptr;
         __a_node -> prev = __position.node_ptr -> prev;
@@ -362,7 +478,7 @@ namespace my_stl {
 
     //fill elements insert
     template<typename _Tp, typename Alloc>
-    typename list<_Tp, Alloc>::iterator
+    inline typename list<_Tp, Alloc>::iterator
     list<_Tp, Alloc>::insert(const_iterator __position, size_type n, const value_type& val) {
         if (n == 0) return iterator(__position.node_ptr);
         for (; n > 0; --n, --__position) {
@@ -374,7 +490,7 @@ namespace my_stl {
     //range insert
     template <typename _Tp, typename Alloc>
     template <typename InputIterator>
-    typename list<_Tp, Alloc>::iterator 
+    inline typename list<_Tp, Alloc>::iterator 
     list<_Tp, Alloc>::insert(const_iterator __position, InputIterator first, InputIterator last) {
         return __insert_dispatch(__position, first, last, 
                 typename _Is_integer<InputIterator>::integral());
