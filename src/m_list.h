@@ -181,10 +181,30 @@ namespace my_stl {
 				return __a_node;
 			}
 
+            //clang implementations
+            //link the node [first, last] in front of position
+            void __link_nodes(__node_ptr __position, __node_ptr first, __node_ptr last) {
+                __position -> prev -> next = first;
+                first -> prev = __position -> prev;
+                __position -> prev = last;
+                last -> next = __position;
+            }
+
             void __unlink_nodes(__node_ptr first, __node_ptr last) {
                 //note we will unlink the nodes between [first, last]
                 first -> prev -> next = last -> next;
                 last -> next -> prev = first -> prev;
+            }
+
+            //helper function in sgi stl (clang use __link_node, __link_node_at_front)
+            void __transfer(iterator position, iterator first, iterator last) {
+                last.node_ptr -> prev -> next = position.node_ptr;
+                first.node_ptr -> prev -> next = last.node_ptr;
+                position.node_ptr -> prev -> next = first.node_ptr;
+                auto tmp = position.node_ptr -> prev;
+                position.node_ptr -> prev = last.node_ptr -> prev;
+                last.node_ptr -> prev = first.node_ptr -> prev;
+                first.node_ptr -> prev = tmp;
             }
 
             //insert dispatch declaration
@@ -215,7 +235,7 @@ namespace my_stl {
             //copy
             list (const list& x);
             //move
-            list (list&& x);
+            list (list&& x) noexcept;
 
             list(std::initializer_list<value_type> il);
 
@@ -224,10 +244,12 @@ namespace my_stl {
             
             //------------------------Destructors-------------------------------
 			~list() {
-				clear();
+                if (__end) {
+                    clear();
                 //note we never initialize the value of __end -> val, so we never need to 
                 //call the destructor of __end -> val
-				__destroy_node(__end);
+                    __destroy_node(__end);
+                }
 			}
 
             iterator begin() noexcept{
@@ -384,7 +406,7 @@ namespace my_stl {
     
     //move
     template<typename _Tp, typename Alloc>
-    list<_Tp, Alloc>::list (list&& x): __end(x.__end) {
+    list<_Tp, Alloc>::list (list&& x) noexcept: __end(x.__end) {
         x.__end = nullptr;
     }
     
@@ -407,13 +429,13 @@ namespace my_stl {
     //range assign, we need to dispatch through whether the type parameter is a integral
     template<typename _Tp, typename Alloc>
     template<typename InputIterator>
-    void list<_Tp, Alloc>::assign(InputIterator first, InputIterator last) {
+    inline void list<_Tp, Alloc>::assign(InputIterator first, InputIterator last) {
         __assign_dispatch(first, last, _Is_integer<InputIterator>::integral());
     }
 
     //fill assign
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::assign(size_type n, const value_type& val) {
+    inline void list<_Tp, Alloc>::assign(size_type n, const value_type& val) {
         //clear and assign is a way to go, but clearly we can reuse the allocated space
         auto iter = begin();
         for (; n > 0 && iter != end(); ++iter, --n) {
@@ -431,21 +453,21 @@ namespace my_stl {
 
     //initializer assign
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::assign(std::initializer_list<value_type> il) {
+    inline void list<_Tp, Alloc>::assign(std::initializer_list<value_type> il) {
         assign(il.begin(), il.end());
     }
 
     //dispatch
     template<typename _Tp, typename Alloc>
     template<typename _Integer>
-    void list<_Tp, Alloc>::__assign_dispatch(_Integer n, _Integer val, __true_type) {
+    inline void list<_Tp, Alloc>::__assign_dispatch(_Integer n, _Integer val, __true_type) {
         assign((size_type) n, val);
     }
 
     //dispatch
     template<typename _Tp, typename Alloc>
     template<typename _InputIterator>
-    void list<_Tp, Alloc>::__assign_dispatch(_InputIterator first, _InputIterator last, __false_type) {
+    inline void list<_Tp, Alloc>::__assign_dispatch(_InputIterator first, _InputIterator last, __false_type) {
         //reuse the allocated space
         auto iter = begin();
         for (; iter != end(), first != last; ++iter, ++first) {
@@ -504,7 +526,7 @@ namespace my_stl {
 
     //initializer list
     template<typename _Tp, typename Alloc>
-    typename list<_Tp, Alloc>::iterator 
+    inline typename list<_Tp, Alloc>::iterator 
     list<_Tp, Alloc>::insert(const_iterator __position, std::initializer_list<value_type> il) {
         return insert(__position, il.begin(), il.end());
     }
@@ -514,7 +536,7 @@ namespace my_stl {
     //.insert(it, int, int). the iterator range insert and fill insert will collide
     template<typename _Tp, typename Alloc>
     template<typename _Integer>
-    typename list<_Tp, Alloc>::iterator
+    inline typename list<_Tp, Alloc>::iterator
     list<_Tp, Alloc>::__insert_dispatch(const_iterator __position, _Integer _i1, _Integer _i2,
                 __true_type) {
         //this is the fill insert
@@ -523,7 +545,7 @@ namespace my_stl {
 
     template<typename _Tp, typename Alloc>
     template<typename InputIterator>
-    typename list<_Tp, Alloc>::iterator
+    inline typename list<_Tp, Alloc>::iterator
     list<_Tp, Alloc>::__insert_dispatch(const_iterator __position, InputIterator first,
             InputIterator last, __false_type) {
         //this is the range insert
@@ -536,18 +558,18 @@ namespace my_stl {
     //--------------------------------end of insertion--------------------------------
 
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::push_back(const _Tp& value) {
+    inline void list<_Tp, Alloc>::push_back(const _Tp& value) {
         insert(cend(), value);
     }
 
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::push_front(const _Tp& value) {
+    inline void list<_Tp, Alloc>::push_front(const _Tp& value) {
         insert(cbegin(), value);
     }
     
     //erase implementations
     template<typename _Tp, typename Alloc>
-    __list_iterator<_Tp> list<_Tp, Alloc>::erase(list::const_iterator __position) {
+    inline __list_iterator<_Tp> list<_Tp, Alloc>::erase(list::const_iterator __position) {
         iterator temp (__position.node_ptr -> next);
         __unlink_nodes(__position.node_ptr, __position.node_ptr);
         my_stl::destroy(&__position.node_ptr -> val);
@@ -557,7 +579,7 @@ namespace my_stl {
     
     //range based erase
     template<typename _Tp, typename Alloc>
-    __list_iterator<_Tp> list<_Tp, Alloc>::erase(const_iterator __first, const_iterator __last) {
+    inline __list_iterator<_Tp> list<_Tp, Alloc>::erase(const_iterator __first, const_iterator __last) {
         if (__first != __last) {
             __unlink_nodes(__first.node_ptr, __last.node_ptr -> prev);
             while (__first != __last) {
@@ -571,12 +593,12 @@ namespace my_stl {
     }
 
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::pop_back() {
+    inline void list<_Tp, Alloc>::pop_back() {
         erase(--cend());
     }
 
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::pop_front() {
+    inline void list<_Tp, Alloc>::pop_front() {
         erase(cbegin());
     }
 
