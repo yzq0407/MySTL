@@ -92,7 +92,7 @@ namespace my_stl {
     template <typename InputIterator, typename Distance>
     void advance(InputIterator &it, Distance n) {
         //simply call the helper function to determine which algorithm should we use
-        __advance(it, n, iterator_traits<InputIterator>::iterator_category());
+        __advance(it, n, typename iterator_traits<InputIterator>::iterator_category());
     }
 
     //function to determine the distance between two iterators
