@@ -193,18 +193,49 @@ inline void testMoreConstructions() {
     assertListEqual(s_list, m_list5);
 
 
-    /* list<T> m_list_move {T(1), T(2), T(3), T(4), T(5), T(6)}; */
-    /* std::list<T> s_list_move {T(1), T(2), T(3), T(4), T(5), T(6)}; */
-    /* list<T> m_list6(std::move(m_list_move)); */
-    /* assertListEqual(s_list_move, m_list6); */
+    list<T> m_list_move {T(1), T(2), T(3), T(4), T(5), T(6)};
+    std::list<T> s_list_move {T(1), T(2), T(3), T(4), T(5), T(6)};
+    list<T> m_list6(std::move(m_list_move));
+    assertListEqual(s_list_move, m_list6);
 }
 
-TEST(ListTest, ListMoreConstructions) {
-    testMoreConstructions<int>();
-    testMoreConstructions<Test_FOO_Simple>();
-    testMoreConstructions<Test_FOO_Array>();
-    testMoreConstructions<Test_FOO_Heap>();
+/* TEST(ListTest, ListMoreConstructions) { */
+/*     testMoreConstructions<int>(); */
+/*     testMoreConstructions<Test_FOO_Simple>(); */
+/*     testMoreConstructions<Test_FOO_Array>(); */
+/*     testMoreConstructions<Test_FOO_Heap>(); */
+/* } */
+
+
+template<typename T>
+inline void testListSpliceTemplate(my_stl::list<T>& m_list) {
+    m_list.insert(m_list.cend(), {T(1), T(2), T(3), T(4)});
+    my_stl::list<T> splice_list1 = {T(10), T(20), T(30)};
+    auto it = m_list.begin();
+    ++it;
+    m_list.splice(it, splice_list1);
+    ASSERT_EQ(m_list == my_stl::list<T> ({T(1), T(10), T(20), T(30), T(2), T(3), T(4)}), true);
+    ASSERT_EQ(splice_list1.empty(), true) << "splice failed";
+    splice_list1.splice(splice_list1.begin(), m_list, it);
+    ASSERT_EQ(m_list == my_stl::list<T> ({T(1), T(10), T(20), T(30), T(3), T(4)}), true);
+    ASSERT_EQ(splice_list1 == my_stl::list<T> ({T(2)}), true);
+
+    it = m_list.begin();
+    my_stl::advance(it, 3);
+
+    m_list.splice(m_list.begin(), m_list, it, m_list.end());
+    ASSERT_EQ(m_list == my_stl::list<T> ({T(30), T(3), T(4), T(1), T(10), T(20)}), true);
 }
+
+TEST_F(ListTestFixture, TestListSplice) {
+    testListSpliceTemplate(ml_i);
+    testListSpliceTemplate(ml_a);
+    testListSpliceTemplate(ml_s);
+    testListSpliceTemplate(ml_h);
+}
+
+
+
 
     
 
