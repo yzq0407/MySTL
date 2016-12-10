@@ -251,7 +251,8 @@ namespace my_stl {
                     __destroy_node(__end);
                 }
 			}
-
+            
+            //begin, end, front, back, size, maxsize
             iterator begin() noexcept{
                 return iterator(__end -> next);
             }
@@ -290,6 +291,11 @@ namespace my_stl {
 
             const_reference back() const {
                 return *(--cend());
+            }
+
+            size_type max_type() const {
+                //from LLVM
+                return size_type(-1);
             }
 
             void swap(list& other) noexcept {
@@ -350,6 +356,7 @@ namespace my_stl {
             //erase a range of values
             iterator erase(const_iterator __first, const_iterator __last);
 
+            //empty and size
             bool empty() const {
                 return __end -> next == __end;
             }
@@ -358,6 +365,7 @@ namespace my_stl {
                 return distance(cbegin(), cend());
             }
 
+            //push and pop
             void push_back(const value_type& value);
 
             void push_front(const value_type& value);
@@ -371,6 +379,26 @@ namespace my_stl {
 
             //unique will remove all the adjacent duplicate values 
             void unique();
+
+            //-----------------------------------------------------------------------
+            //-----------------------------Splice operation--------------------------
+            //-----------------------------------------------------------------------
+            //entire list
+            void splice(const_iterator __position, list& __other);
+            
+            void splice(const_iterator __position, list&& __other);
+            
+            //single element
+            void splice(const_iterator __position, list& __other, const_iterator __i);
+
+            void splice(const_iterator __position, list&& __other, const_iterator __i);
+
+            //element range
+            void splice(const_iterator __position, list& __other, 
+                    const_iterator __first, const_iterator __last);
+
+            void splice(const_iterator __position, list&& __other, 
+                    const_iterator __first, const_iterator __last);
 
     };
 
@@ -479,6 +507,18 @@ namespace my_stl {
         else {
             erase(iter, cend());
         }
+    }
+
+    //-------------------------------------------------------------------------------
+    //-------------------------Operators---------------------------------------------
+    template<typename _Tp, typename Alloc>
+    inline bool operator==(const list<_Tp, Alloc>& lhs, const list<_Tp, Alloc>& rhs) {
+        auto _it1 = lhs.cbegin();
+        auto _it2 = rhs.cbegin();
+        auto _e1 = lhs.cend();
+        auto _e2 = rhs.cend();
+        for (; _it1 != _e1 && _it2 != _e2 && *_it1 == *_it2; ++_it1, ++_it2) {}
+        return _it1 == _e1 && _it2 == _e2;
     }
 
 
@@ -628,6 +668,65 @@ namespace my_stl {
             }
             next = head;
         }
+    }
+
+    //--------------------------------------------------------------------------------
+    //-------------------------Splice operation --------------------------------------
+    //--------------------------------------------------------------------------------
+    //LLVM implementation is preferred
+    //entire list
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list& __x) {
+        if (!__x.empty()) {
+            //unlink the old list
+            __node_ptr first = __x.__end -> next;
+            __node_ptr last = __x.__end -> prev;
+            __unlink_nodes(first, last);
+            //link the new list
+            __link_nodes(__pos.node_ptr, first, last);
+        }
+    }
+
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list&& __x) {
+        //just a delegate method
+        splice(__pos, __x);
+    }
+
+    //single element
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list& __x, const_iterator __i) {
+        //note the edge case, if __pos == __i, the unlinked nodes will never be linked back
+        if (__pos != __i && __pos.node_ptr != __i.node_ptr -> next) {
+            __node_ptr shift_node = __i.node_ptr;
+            __unlink_nodes(shift_node, shift_node);
+            __link_nodes(__pos.node_ptr, shift_node, shift_node);
+        }
+    }
+
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list&& __x, const_iterator __i){
+        //just a delegate method
+        splice(__pos, __x, __i);
+    }
+
+    //range of elements
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list& __x, const_iterator __first,
+            const_iterator __last) {
+        if (__first != __last) {
+            __node_ptr start = __first.node_ptr;
+            __node_ptr end = __last.node_ptr -> prev;
+            __unlink_nodes(start, end);
+            __link_nodes(__pos.node_ptr, start, end);
+        }
+    }
+
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list&& __x, const_iterator __first,
+            const_iterator __last) {
+        //just a delegate method
+        splice(__pos, __x, __first, __last);
     }
 }
 
