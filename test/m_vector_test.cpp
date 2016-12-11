@@ -202,7 +202,7 @@ TEST_F(VectorTestFixture, TestPopBack) {
 TEST_F(VectorTestFixture, TestAssignment) {
     using std::clock;
     clock_t begin, end;
-    constexpr int large_size = 100000;
+    constexpr int large_size = 1000;
     constexpr int small_size = 500;
     //create two vector and assign one to the other
     begin = clock();
