@@ -125,6 +125,99 @@ namespace my_stl {
     template <typename ForwardIterator>
     void next(ForwardIterator &it, typename iterator_traits<ForwardIterator>::difference_type n = 1);
 
+
+    //reverse iterator, added in C++11
+    //note that reverse iterator is just the adapter for iterator
+    //mostly copied from llvm implementation
+    template <typename Iterator>
+    class reverse_iterator: public iterator<typename iterator_traits<Iterator>::iterator_category,
+                                            typename iterator_traits<Iterator>::value_type,
+                                            typename iterator_traits<Iterator>::difference_type,
+                                            typename iterator_traits<Iterator>::pointer,
+                                            typename iterator_traits<Iterator>::reference>
+    {
+    protected:
+        Iterator current;
+    public:
+        using iterator_type = Iterator;
+        using difference_type = typename iterator_traits<Iterator>::difference_type;
+        using reference = typename iterator_traits<Iterator>::reference;
+        using pointer = typename iterator_traits<Iterator>::pointer;
+        
+        //interface, since it is added from c++11, we use constexpr function as much as possible
+        //under c++ standard, this means all the iterator interface has to declared to be constexpr
+        //this is no longer the case under c++14
+        constexpr reverse_iterator():current() {}
+        constexpr explicit reverse_iterator(Iterator iterator): current(iterator) {}
+        
+        //copy
+        template <class U>
+        constexpr reverse_iterator(const reverse_iterator<U>& other): current(other.current) {}
+
+        template <class U>
+        reverse_iterator& operator=(const reverse_iterator<U>& rhs) {
+            current = rhs.current;
+            return *this;
+        }
+
+        constexpr Iterator base() const{return current;}
+
+        reference operator*() const {
+            Iterator tmp = current;
+            return *--tmp;
+        }
+
+        constexpr pointer operator->() const {
+            return &operator*();
+        }
+        //pre increment
+        reverse_iterator& operator++() {
+            --current;
+            return *this;
+        }
+        //post increment
+        reverse_iterator operator++(int) {
+            reverse_iterator tmp(current);
+            --current;
+            return tmp; 
+        }
+        //pre decrement
+        reverse_iterator& operator--() {
+            ++current;
+            return *this;
+        }
+        //post decrement
+        reverse_iterator operator--(int) {
+            reverse_iterator tmp(current);
+            ++current;
+            return tmp;
+        }
+
+
+        //only for random access iterator
+        constexpr reverse_iterator operator+ (difference_type n) const {
+            return reverse_iterator(current - n);
+        }
+
+        constexpr reverse_iterator operator- (difference_type n) const {
+            return reverse_iterator(current + n);
+        }
+
+        reverse_iterator& operator+=(difference_type n) const {
+            current -= n;
+            return *this;
+        }
+
+        reverse_iterator& operator-=(difference_type n) {
+            current += n;
+            return *this;
+        }
+
+        constexpr reference operator[](difference_type n) const {
+            return *(this + n);
+        }
+    };
+
 }
 
 #endif
