@@ -157,6 +157,10 @@ namespace my_stl {
             using const_pointer = const _Tp*;
             using reference = _Tp&;
             using const_reference = const _Tp&;
+            
+            //reverse iterator, added c++11
+            using reverse_iterator = my_stl::reverse_iterator<iterator>;
+            using const_reverse_iterator = my_stl::reverse_iterator<const_iterator>;
 
         protected: 
             using __node = __list_node<_Tp>;
@@ -241,6 +245,12 @@ namespace my_stl {
 
             template<typename InputIterator>
             list(InputIterator first, InputIterator last);
+
+            //copy assign
+            list& operator=(std::initializer_list<value_type> il) {
+                assign(il);
+                return *this;
+            }
             
             //------------------------Destructors-------------------------------
 			~list() {
@@ -251,6 +261,8 @@ namespace my_stl {
                     __destroy_node(__end);
                 }
 			}
+
+            //--------------------------------begin and end----------------------------------//
             
             //begin, end, front, back, size, maxsize
             iterator begin() noexcept{
@@ -269,6 +281,24 @@ namespace my_stl {
                 return const_iterator(__end);
             }
 
+            //--------------------------------rbegin and rend---------------------------------//
+            reverse_iterator rbegin() noexcept {
+                return reverse_iterator(end());
+            }
+
+            const_reverse_iterator rbegin() const noexcept {
+                return const_reverse_iterator(end());
+            }
+
+            reverse_iterator rend() noexcept {
+                return reverse_iterator(begin());
+            }
+
+            const_reverse_iterator rend() const noexcept {
+                return const_reverse_iterator(begin());
+            }
+
+            //------------------------------cbegin and cend----------------------------------//
             const_iterator cbegin() const noexcept{
                 return const_iterator(__end -> next);
             };
@@ -276,6 +306,17 @@ namespace my_stl {
             const_iterator cend() const noexcept{
                 return const_iterator(__end);
             }
+
+            //------------------------------rcbegin and rcend---------------------------------//
+            const_reverse_iterator crbegin() const noexcept {
+                return const_reverse_iterator(cend());
+            }
+
+            const_reverse_iterator crend() const noexcept {
+                return const_reverse_iterator(cbegin());
+            }
+
+            //------------------------------front and back------------------------------------//
 
             reference front() {
                 return *begin();
@@ -293,7 +334,7 @@ namespace my_stl {
                 return *(--cend());
             }
 
-            size_type max_type() const {
+            size_type max_size() const noexcept{
                 //from LLVM
                 return size_type(-1);
             }
@@ -458,7 +499,7 @@ namespace my_stl {
     template<typename _Tp, typename Alloc>
     template<typename InputIterator>
     inline void list<_Tp, Alloc>::assign(InputIterator first, InputIterator last) {
-        __assign_dispatch(first, last, _Is_integer<InputIterator>::integral());
+        __assign_dispatch(first, last, typename _Is_integer<InputIterator>::integral());
     }
 
     //fill assign
@@ -498,7 +539,7 @@ namespace my_stl {
     inline void list<_Tp, Alloc>::__assign_dispatch(_InputIterator first, _InputIterator last, __false_type) {
         //reuse the allocated space
         auto iter = begin();
-        for (; iter != end(), first != last; ++iter, ++first) {
+        for (; iter != end() && first != last; ++iter, ++first) {
             *iter = *first;
         }
         if (iter == end()) {
