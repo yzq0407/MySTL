@@ -199,12 +199,12 @@ inline void testMoreConstructions() {
     assertListEqual(s_list_move, m_list6);
 }
 
-/* TEST(ListTest, ListMoreConstructions) { */
-/*     testMoreConstructions<int>(); */
-/*     testMoreConstructions<Test_FOO_Simple>(); */
-/*     testMoreConstructions<Test_FOO_Array>(); */
-/*     testMoreConstructions<Test_FOO_Heap>(); */
-/* } */
+TEST(ListTest, ListMoreConstructions) {
+    testMoreConstructions<int>();
+    testMoreConstructions<Test_FOO_Simple>();
+    testMoreConstructions<Test_FOO_Array>();
+    testMoreConstructions<Test_FOO_Heap>();
+}
 
 
 template<typename T>
@@ -233,6 +233,28 @@ TEST_F(ListTestFixture, TestListSplice) {
     testListSpliceTemplate(ml_s);
     testListSpliceTemplate(ml_h);
 }
+
+template <typename T>
+void testListReverseIteratorTemplate(std::list<T>& s_list, my_stl::list<T>& m_list) {
+    s_list = {T(5), T(2), T(3), T(12), T(-1)};
+    m_list = {T(5), T(2), T(3), T(12), T(-1)};
+    auto m_it = m_list.crbegin();
+    auto s_it = s_list.crbegin();
+    for (;m_it != m_list.crend() && s_it != s_list.crend();
+            ++m_it, ++s_it){
+        ASSERT_EQ(*m_it == *s_it, true);
+    }
+}
+
+
+TEST_F(ListTestFixture, TestListReverseIterator) {
+    testListReverseIteratorTemplate(sl_i, ml_i);
+    testListReverseIteratorTemplate(sl_a, ml_a);
+    testListReverseIteratorTemplate(sl_h, ml_h);
+    testListReverseIteratorTemplate(sl_s, ml_s);
+}
+
+
 
 
 
