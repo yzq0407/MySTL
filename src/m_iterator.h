@@ -218,6 +218,51 @@ namespace my_stl {
         }
     };
 
+    //non member function for reverse iterator
+    template <typename _Iter1, typename _Iter2>
+    inline bool operator==(const reverse_iterator<_Iter1>& r_it1, const reverse_iterator<_Iter2>& r_it2) {
+        return r_it1.base() == r_it2.base();
+    }
+
+    template <typename _Iter1, typename _Iter2>
+    inline bool operator!=(const reverse_iterator<_Iter1>& r_it1, const reverse_iterator<_Iter2>& r_it2) {
+        return r_it1.base() != r_it2.base();
+    }
+
+    template <typename _Iter1, typename _Iter2>
+    inline bool operator>(const reverse_iterator<_Iter1>& r_it1, const reverse_iterator<_Iter2>& r_it2) {
+        return r_it1.base() > r_it2.base();
+    }
+
+    template <typename _Iter1, typename _Iter2>
+    inline bool operator>=(const reverse_iterator<_Iter1>& r_it1, const reverse_iterator<_Iter2>& r_it2) {
+        return r_it1.base() >= r_it2.base();
+    }
+
+
+    template <typename _Iter1, typename _Iter2>
+    inline bool operator<(const reverse_iterator<_Iter1>& r_it1, const reverse_iterator<_Iter2>& r_it2) {
+        return r_it1.base() < r_it2.base();
+    }
+    
+    //trailing return type deduction
+    template <typename _Iter1, typename _Iter2>
+    inline auto operator-(const reverse_iterator<_Iter1>& r_it1, const reverse_iterator<_Iter2>& r_it2)
+    -> decltype(r_it1.base - r_it2.base()){
+        return r_it1.base() - r_it2.base();
+    }
+
+    template <typename _Iter>
+    inline reverse_iterator<_Iter> operator+(typename reverse_iterator<_Iter>::difference_type _n, const reverse_iterator<_Iter>& _r_it) {
+        return _r_it + _n;
+    }
+    
+    //this function is for C++14 and above, but added anyway
+    template <typename _Iter>
+    inline reverse_iterator<_Iter> make_reverse_iterator(_Iter _i) {
+        return reverse_iterator<_Iter> (_i);
+    }
+
 }
 
 #endif
