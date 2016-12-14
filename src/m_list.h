@@ -251,6 +251,10 @@ namespace my_stl {
                 assign(il);
                 return *this;
             }
+
+            list& operator=(const list& x);
+
+            list& operator=(list&& x) noexcept;
             
             //------------------------Destructors-------------------------------
 			~list() {
@@ -425,9 +429,9 @@ namespace my_stl {
             //-----------------------------Splice operation--------------------------
             //-----------------------------------------------------------------------
             //entire list
-            void splice(const_iterator __position, list& __other);
+            void splice(const_iterator __position, list& __other) noexcept;
             
-            void splice(const_iterator __position, list&& __other);
+            void splice(const_iterator __position, list&& __other) noexcept;
             
             //single element
             void splice(const_iterator __position, list& __other, const_iterator __i);
@@ -560,6 +564,26 @@ namespace my_stl {
         auto _e2 = rhs.cend();
         for (; _it1 != _e1 && _it2 != _e2 && *_it1 == *_it2; ++_it1, ++_it2) {}
         return _it1 == _e1 && _it2 == _e2;
+    }
+
+    //copy assign
+    template<typename _Tp, typename Alloc>
+    inline list<_Tp, Alloc>& list<_Tp, Alloc>::operator=(const list& _x) {
+        //make strong exception gurantee
+        list temp(_x);
+        swap(temp);
+        return *this;
+    }
+
+
+    //move assign
+    template<typename _Tp, typename Alloc>
+    inline list<_Tp, Alloc>& list<_Tp, Alloc>::operator=(list&& _x) noexcept{
+        if (this != &_x) {
+            clear();
+            splice(end(), _x);
+        }
+        return *this;
     }
 
 
@@ -717,7 +741,7 @@ namespace my_stl {
     //LLVM implementation is preferred
     //entire list
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::splice(const_iterator __pos, list& __x) {
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list& __x) noexcept{
         if (!__x.empty()) {
             //unlink the old list
             __node_ptr first = __x.__end -> next;
@@ -729,7 +753,7 @@ namespace my_stl {
     }
 
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::splice(const_iterator __pos, list&& __x) {
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list&& __x) noexcept{
         //just a delegate method
         splice(__pos, __x);
     }
