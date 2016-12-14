@@ -254,6 +254,53 @@ TEST_F(ListTestFixture, TestListReverseIterator) {
     testListReverseIteratorTemplate(sl_s, ml_s);
 }
 
+template<typename T>
+inline void testListAssignmentTemplate(std::list<T>& s_list, my_stl::list<T>& m_list) {
+    assertListEqual(s_list, m_list);
+    //test preconstructed list
+    {
+        std::list<T> s_rhs = {T(1), T(2), T(-1), T(100)};
+        my_stl::list<T> m_rhs = {T(1), T(2), T(-1), T(100)};
+        s_list = s_rhs;
+        m_list = m_rhs;
+        assertListEqual(s_list, m_list);
+        //assert self assignment
+        s_list = s_list;
+        m_list = m_list;
+        assertListEqual(s_list, m_list);
+    }
+    {
+        //move assignment
+        std::list<T> s_rhs = {T(-1), T(12), T(-114), T(0), T(500), T(213)};
+        my_stl::list<T> m_rhs = {T(-1), T(12), T(-114), T(0), T(500), T(213)};
+        s_list = std::move(s_rhs);
+        m_list = std::move(m_rhs);
+        assertListEqual(s_list, m_list);
+        //rvalue move
+        s_list = std::list<T> {T(-3), T(-300)};
+        m_list = my_stl::list<T> {T(-3), T(-300)};
+        //self move
+        s_list = std::move(s_rhs);
+        m_list = std::move(m_rhs);
+        assertListEqual(s_list, m_list);
+    }
+    {
+        //large assignment
+        std::list<T> s_rhs(100000, T(-11));
+        my_stl::list<T> m_rhs(100000, T(-11));
+        s_list = s_rhs;
+        m_list = m_rhs;
+        assertListEqual(s_list, m_list);
+    }
+}
+
+TEST_F(ListTestFixture, TestListAssignment) {
+    testListAssignmentTemplate(sl_i, ml_i);
+    testListAssignmentTemplate(sl_a, ml_a);
+    testListAssignmentTemplate(sl_h, ml_h);
+    testListAssignmentTemplate(sl_s, ml_s);
+}
+
 
 
 
