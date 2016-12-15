@@ -2,6 +2,7 @@
 #include <list>
 #include <gtest/gtest.h>
 #include <iostream>
+#include <algorithm>   //for std::sort
 #include "test_objects.h"
 
 
@@ -254,10 +255,163 @@ TEST_F(ListTestFixture, TestListReverseIterator) {
     testListReverseIteratorTemplate(sl_s, ml_s);
 }
 
+template<typename T>
+inline void testListAssignmentTemplate(std::list<T>& s_list, my_stl::list<T>& m_list) {
+    assertListEqual(s_list, m_list);
+    //test preconstructed list
+    {
+        std::list<T> s_rhs = {T(1), T(2), T(-1), T(100)};
+        my_stl::list<T> m_rhs = {T(1), T(2), T(-1), T(100)};
+        s_list = s_rhs;
+        m_list = m_rhs;
+        assertListEqual(s_list, m_list);
+        //assert self assignment
+        s_list = s_list;
+        m_list = m_list;
+        assertListEqual(s_list, m_list);
+    }
+    {
+        //move assignment
+        std::list<T> s_rhs = {T(-1), T(12), T(-114), T(0), T(500), T(213)};
+        my_stl::list<T> m_rhs = {T(-1), T(12), T(-114), T(0), T(500), T(213)};
+        s_list = std::move(s_rhs);
+        m_list = std::move(m_rhs);
+        assertListEqual(s_list, m_list);
+        //rvalue move
+        s_list = std::list<T> {T(-3), T(-300)};
+        m_list = my_stl::list<T> {T(-3), T(-300)};
+        //self move
+        s_list = std::move(s_rhs);
+        m_list = std::move(m_rhs);
+        assertListEqual(s_list, m_list);
+    }
+    {
+        //large assignment
+        std::list<T> s_rhs(100000, T(-11));
+        my_stl::list<T> m_rhs(100000, T(-11));
+        s_list = s_rhs;
+        m_list = m_rhs;
+        assertListEqual(s_list, m_list);
+    }
+}
 
+TEST_F(ListTestFixture, TestListAssignment) {
+    testListAssignmentTemplate(sl_i, ml_i);
+    testListAssignmentTemplate(sl_a, ml_a);
+    testListAssignmentTemplate(sl_h, ml_h);
+    testListAssignmentTemplate(sl_s, ml_s);
+}
 
+//test merge function
+TEST(ListTest, TestListMerge) {
+    auto less = [] (const int a, const int b) {return a < b;};
 
+/*     my_stl::list<int> m1 = {}; */
+/*     my_stl::list<int> m2 = {-3, 9, 10, 14, 21}; */
+/*     m1.splice(m1.cend(), m2); */
+/*     std::cout << "splice result: m1" << std::endl; */
+/*     for(int num: m1) { */
+/*         std::cout << num << std::endl; */
+/*     } */
+/*     std::cout << "splice result: m2" << std::endl; */
+/*     for(int num: m2) { */
+/*         std::cout << num << std::endl; */
+/*     } */
 
+    {
+        //empty merge
+        std::list<int> l1 = {-3, 9, 10, 14, 21};
+        std::list<int> l2 = {};
+        l1.merge(l2);
+        my_stl::list<int> m1 = {-3, 9, 10, 14, 21};
+        my_stl::list<int> m2 = {};
+        m1.merge(m2, less);
+        assertListEqual(l1, m1);
+        assertListEqual(l2, m2);
+        l2.merge(l1);
+        m2.merge(m1, less);
+        assertListEqual(l1, m1);
+        assertListEqual(l2, m2);
+    }
+    {
+        std::list<int> l1;
+        std::list<int> l2;
+        l1.merge(l2);
+        my_stl::list<int> m1;
+        my_stl::list<int> m2;
+        m1.merge(m2, less);
+        assertListEqual(l1, m1);
+    }
+    {
+        std::list<int> l1 = {-3, 9, 10, 14, 21};
+        std::list<int> l2 = {-100, -99, -98, -97};
+        l1.merge(l2);
+        my_stl::list<int> m1 = {-3, 9, 10, 14, 21};
+        my_stl::list<int> m2 = {-100, -99, -98, -97};
+        m1.merge(m2, less);
+        assertListEqual(l1, m1);
+    }
+    {
+        std::list<int> l1 = {-3, 9, 10, 14, 21};
+        std::list<int> l2 = {-2, 2, 8, 20, 100};
+        l1.merge(l2);
+        my_stl::list<int> m1 = {-3, 9, 10, 14, 21};
+        my_stl::list<int> m2 = {-2, 2, 8, 20, 100};
+        m1.merge(m2, less);
+        assertListEqual(l1, m1);
+    }
+    {
+        std::list<int> l2 = {-3, 9, 10, 14, 21};
+        std::list<int> l1 = {-2, 2, 8, 20, 100};
+        l1.merge(l2);
+        my_stl::list<int> m2 = {-3, 9, 10, 14, 21};
+        my_stl::list<int> m1 = {-2, 2, 8, 20, 100};
+        m1.merge(m2, less);
+        assertListEqual(l1, m1);
+    }
+    {
+        std::list<int> l2(100, -1);
+        std::list<int> l1(10000, -2);
+        l1.merge(l2);
+        my_stl::list<int> m2(100, -1);
+        my_stl::list<int> m1(10000, -2);
+        m1.merge(m2, less);
+        assertListEqual(l1, m1);
+    }
+    {
+        //large dataset tests with random numbers
+        using std::clock;
+        constexpr size_t data_size = 1000000;
+        std::vector<int> rand_nums1(data_size);
+        std::vector<int> rand_nums2(data_size);
+        for (int i = 0; i < data_size; ++i) {
+            rand_nums1[i] = rand() % data_size;
+            rand_nums2[i] = rand() % data_size;
+        }
+        std::sort(rand_nums1.begin(), rand_nums1.end());
+        std::sort(rand_nums2.begin(), rand_nums2.end());
+        clock_t tic, toc;
+        {
+            std::list<int> list1(rand_nums1.begin(), rand_nums1.end());
+            std::list<int> list2(rand_nums2.begin(), rand_nums2.end());
+            tic = clock();
+            list1.merge(list2);
+            toc = clock();
+            std::cout << "It take std::list " << (float(toc - tic) / CLOCKS_PER_SEC) 
+                << " secs to merge two sorted lists with size: " << data_size << std::endl;
 
-    
+            //my list
+            my_stl::list<int> m_list1(rand_nums1.begin(), rand_nums1.end());
+            my_stl::list<int> m_list2(rand_nums2.begin(), rand_nums2.end());
+            tic = clock();
+            m_list1.merge(m_list2, less);
+            toc = clock();
+            std::cout << "It take my_stl::list " << (float(toc - tic) / CLOCKS_PER_SEC) 
+                << " secs to merge two sorted lists with size: " << data_size << std::endl;
+
+            //assert equal
+            assertListEqual(list1, m_list1);
+        }
+    }
+}
 
