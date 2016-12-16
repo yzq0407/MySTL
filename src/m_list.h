@@ -408,7 +408,7 @@ namespace my_stl {
             }
 
             size_type size() const noexcept{
-                return distance(cbegin(), cend());
+                return my_stl::distance(cbegin(), cend());
             }
 
             //push and pop
@@ -419,6 +419,13 @@ namespace my_stl {
             void pop_back();
             
             void pop_front();
+
+            //emplace, variadic argument
+            template <typename... Args>
+            void emplace_front(Args&&... args);
+
+            template <typename... Args>
+            void emplace_back(Args&&... args);
 
             //remove the same value
             void remove(const value_type& value);
@@ -688,6 +695,25 @@ namespace my_stl {
         insert(cbegin(), value);
     }
     
+    //emplace, variadic template argument
+    template<typename _Tp, typename Alloc>
+    template<typename... Args>
+    void list<_Tp, Alloc>::emplace_front(Args&&... args) {
+        //allocate a new node
+        __node_ptr _a_node= __get_node();
+        construct(&_a_node->val, std::forward<Args>(args)...);
+        __link_nodes(__end -> next, _a_node, _a_node);
+    }
+
+    template<typename _Tp, typename Alloc>
+    template<typename... Args>
+    void list<_Tp, Alloc>::emplace_back(Args&&... args) {
+        //allocate a new node
+        __node_ptr _a_node= __get_node();
+        construct(&_a_node->val, std::forward<Args>(args)...);
+        __link_nodes(__end, _a_node, _a_node);
+    }
+
     //erase implementations
     template<typename _Tp, typename Alloc>
     inline __list_iterator<_Tp> list<_Tp, Alloc>::erase(list::const_iterator __position) {
@@ -722,6 +748,7 @@ namespace my_stl {
     inline void list<_Tp, Alloc>::pop_front() {
         erase(cbegin());
     }
+
 
     template<typename _Tp, typename Alloc>
     void list<_Tp, Alloc>::remove(const _Tp& value) {

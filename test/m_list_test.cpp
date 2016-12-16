@@ -368,7 +368,7 @@ TEST(ListTest, TestListMerge) {
     {
         //large dataset tests with random numbers
         using std::clock;
-        constexpr size_t data_size = 1000000;
+        constexpr size_t data_size = 10000;
         std::vector<int> rand_nums1(data_size);
         std::vector<int> rand_nums2(data_size);
         for (int i = 0; i < data_size; ++i) {
@@ -440,7 +440,7 @@ void testListSortTemplate(std::list<T>& s_l, my_stl::list<T>& m_l, Comp comp = C
     }
     {
         //large number test, start from totally random
-        size_t testSize = 100000;
+        size_t testSize = 1000;
         clock_t tic, toc;
         for (int i = 0; i < testSize; ++i) {
             T value = T(rand() % testSize);
@@ -493,4 +493,20 @@ TEST_F(ListTestFixture, ListSortTest) {
         else return *a.getIntMember() > *b.getIntMember();
     };
     testListSortTemplate(sl_h, ml_h, heap_less);
+}
+
+TEST(ListTest, ListEmplaceTest) {
+    std::string str = "emplace is a great addition intrduced in C++11 stl!";
+    std::list<std::string> s_ls;
+    my_stl::list<std::string> m_ls;
+    for (int i = 0; i < 15; ++i) {
+        s_ls.emplace_back(i, 'a');
+        m_ls.emplace_back(i, 'a');
+    }
+    assertListEqual(s_ls, m_ls);
+    for (int i = 0; i < 10; ++i) {
+        s_ls.emplace_front(str, i, i + 5); 
+        m_ls.emplace_front(str, i, i + 5); 
+    }
+    assertListEqual(s_ls, m_ls);
 }
