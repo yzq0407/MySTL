@@ -5,6 +5,7 @@
 #ifndef __MY_STL_CONSTRUCT_H
 #define __MY_STL_CONSTRUCT_H
 #include <new>    //for placement new
+#include <utility>            //for std::forward
 #include "m_type_traits.h"   //for type traits
 #include "m_iterator.h"      //for iterator traits
 
@@ -13,6 +14,12 @@ namespace my_stl {
     inline void construct (TYPE1* tp1, const TYPE2& t2) {
         //call placement new to construct type1 in place
         new (tp1) TYPE1(t2);
+    }
+
+    //variadic construct
+    template <typename TYPE1, typename... Args>
+    inline void construct (TYPE1* tp1, Args&&... args) {
+        new (tp1) TYPE1(std::forward<Args>(args)...);
     }
 
     //destroy, we should have several versions
