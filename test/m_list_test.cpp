@@ -305,19 +305,6 @@ TEST_F(ListTestFixture, TestListAssignment) {
 //test merge function
 TEST(ListTest, TestListMerge) {
     auto less = [] (const int a, const int b) {return a < b;};
-
-/*     my_stl::list<int> m1 = {}; */
-/*     my_stl::list<int> m2 = {-3, 9, 10, 14, 21}; */
-/*     m1.splice(m1.cend(), m2); */
-/*     std::cout << "splice result: m1" << std::endl; */
-/*     for(int num: m1) { */
-/*         std::cout << num << std::endl; */
-/*     } */
-/*     std::cout << "splice result: m2" << std::endl; */
-/*     for(int num: m2) { */
-/*         std::cout << num << std::endl; */
-/*     } */
-
     {
         //empty merge
         std::list<int> l1 = {-3, 9, 10, 14, 21};
@@ -357,7 +344,7 @@ TEST(ListTest, TestListMerge) {
         l1.merge(l2);
         my_stl::list<int> m1 = {-3, 9, 10, 14, 21};
         my_stl::list<int> m2 = {-2, 2, 8, 20, 100};
-        m1.merge(m2, less);
+        m1.merge(m2);
         assertListEqual(l1, m1);
     }
     {
@@ -366,7 +353,7 @@ TEST(ListTest, TestListMerge) {
         l1.merge(l2);
         my_stl::list<int> m2 = {-3, 9, 10, 14, 21};
         my_stl::list<int> m1 = {-2, 2, 8, 20, 100};
-        m1.merge(m2, less);
+        m1.merge(m2);
         assertListEqual(l1, m1);
     }
     {
@@ -375,7 +362,7 @@ TEST(ListTest, TestListMerge) {
         l1.merge(l2);
         my_stl::list<int> m2(100, -1);
         my_stl::list<int> m1(10000, -2);
-        m1.merge(m2, less);
+        m1.merge(m2);
         assertListEqual(l1, m1);
     }
     {
@@ -404,7 +391,7 @@ TEST(ListTest, TestListMerge) {
             my_stl::list<int> m_list1(rand_nums1.begin(), rand_nums1.end());
             my_stl::list<int> m_list2(rand_nums2.begin(), rand_nums2.end());
             tic = clock();
-            m_list1.merge(m_list2, less);
+            m_list1.merge(m_list2);
             toc = clock();
             std::cout << "It take my_stl::list " << (float(toc - tic) / CLOCKS_PER_SEC) 
                 << " secs to merge two sorted lists with size: " << data_size << std::endl;
@@ -413,5 +400,97 @@ TEST(ListTest, TestListMerge) {
             assertListEqual(list1, m_list1);
         }
     }
+
 }
 
+template<typename T, typename Comp = std::less<T>>
+void testListSortTemplate(std::list<T>& s_l, my_stl::list<T>& m_l, Comp comp = Comp()) {
+    using std::clock;
+    assertListEqual(s_l, m_l);
+    {
+        //empty test
+        s_l.sort(comp);
+        m_l.sort(comp);
+        assertListEqual(s_l, m_l);
+        //one elements sort
+        s_l.push_back(T(-4));
+        m_l.push_back(T(-4));
+        s_l.sort(comp);
+        m_l.sort(comp);
+        assertListEqual(s_l, m_l);
+        s_l.push_back(T(0));
+        m_l.push_back(T(0));
+        s_l.sort(comp);
+        m_l.sort(comp);
+        assertListEqual(s_l, m_l);
+        s_l.clear();
+        m_l.clear();
+    }
+    {
+        //hundreds element
+        for (int i = 0; i < 100; ++i) {
+            int val = rand() % 200;
+            s_l.push_back(T(val));
+            m_l.push_back(T(val));
+        }
+        assertListEqual(s_l, m_l);
+        s_l.sort(comp);
+        m_l.sort(comp);
+        assertListEqual(s_l, m_l);
+    }
+    {
+        //large number test, start from totally random
+        size_t testSize = 100000;
+        clock_t tic, toc;
+        for (int i = 0; i < testSize; ++i) {
+            T value = T(rand() % testSize);
+            s_l.push_back(value);
+            m_l.push_back(value);
+        }
+        //sort random value
+        tic = clock();
+        s_l.sort(comp);
+        toc = clock();
+        std::cout << "sort size: " << testSize << " std::list with random values takes " 
+            << (float(toc - tic) / CLOCKS_PER_SEC) << " secs" << std::endl;
+
+        tic = clock();
+        m_l.sort(comp);
+        toc = clock();
+        std::cout << "sort size: " << testSize << " my_stl::list with random values takes " 
+            << (float(toc - tic) / CLOCKS_PER_SEC) << " secs" << std::endl;
+        assertListEqual(s_l, m_l);
+
+        //sort in-order value
+        tic = clock();
+        s_l.sort(comp);
+        toc = clock();
+        std::cout << "sort size: " << testSize << " std::list with in-order values takes " 
+            << (float(toc - tic) / CLOCKS_PER_SEC) << " secs" << std::endl;
+
+        tic = clock();
+        m_l.sort(comp);
+        toc = clock();
+        std::cout << "sort size: " << testSize << " my_stl::list with in-order values takes " 
+            << (float(toc - tic) / CLOCKS_PER_SEC) << " secs" << std::endl;
+        assertListEqual(s_l, m_l);
+    }
+
+
+}
+
+TEST_F(ListTestFixture, ListSortTest) {
+    testListSortTemplate(sl_i, ml_i);
+    testListSortTemplate(sl_i, ml_i, std::greater<int>());
+
+    //custom sort for heap object
+    auto heap_less = [] (const Test_FOO_Heap& a, const Test_FOO_Heap& b) -> bool {
+        if (a.getSimpleObjectMember() -> getCharMember() != 
+                b.getSimpleObjectMember() -> getCharMember()) {
+            return a.getSimpleObjectMember() -> getCharMember() <
+                b.getSimpleObjectMember() -> getCharMember();
+        }
+        else return *a.getIntMember() > *b.getIntMember();
+    };
+    testListSortTemplate(sl_h, ml_h, heap_less);
+}
