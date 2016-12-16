@@ -17,6 +17,10 @@ class Test_FOO_Simple {
 
         bool operator==(const Test_FOO_Simple& rhs) const;
         bool operator!=(const Test_FOO_Simple& rhs) const;
+
+        const int& getIntMember() const;
+        const long long& getLongMember() const;
+        const char& getCharMember() const;
 };
 
 
@@ -62,5 +66,8 @@ class Test_FOO_Heap {
         }
         
         ~Test_FOO_Heap();
+
+        const int* getIntMember() const;
+        const Test_FOO_Simple* getSimpleObjectMember() const;
 };
 #endif

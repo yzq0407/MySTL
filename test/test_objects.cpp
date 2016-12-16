@@ -3,7 +3,7 @@
 Test_FOO_Simple::Test_FOO_Simple(): mi(0), mll(-1), mc('a') {
 }
 
-Test_FOO_Simple::Test_FOO_Simple(int i): mi(i), mll(2 * i), mc('b') {}
+Test_FOO_Simple::Test_FOO_Simple(int i): mi(i), mll(2 * i), mc((char)(i % 256)) {}
 
 Test_FOO_Simple::Test_FOO_Simple(char c): mi(0), mll(-2), mc(c) {}
 
@@ -12,6 +12,18 @@ Test_FOO_Simple::Test_FOO_Simple(int i, long long ll, char c):
     mll(ll),
     mc(c)
 {
+}
+
+const int& Test_FOO_Simple::getIntMember() const {
+    return mi;
+}
+
+const long long& Test_FOO_Simple::getLongMember() const {
+    return mll;
+}
+
+const char& Test_FOO_Simple::getCharMember() const {
+    return mc;
 }
 
 bool Test_FOO_Simple::operator==(const Test_FOO_Simple& rhs) const {
@@ -103,6 +115,14 @@ bool Test_FOO_Heap::operator!=(const Test_FOO_Heap& rhs) const{
 Test_FOO_Heap::~Test_FOO_Heap() {
     delete m1;
     delete m2;
+}
+
+const int* Test_FOO_Heap::getIntMember() const {
+    return m1;
+}
+
+const Test_FOO_Simple* Test_FOO_Heap::getSimpleObjectMember() const {
+    return m2;
 }
 
 
