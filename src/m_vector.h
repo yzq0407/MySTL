@@ -8,7 +8,7 @@
 //#include <stdio.h>
 
 namespace my_stl {
-    template <typename _Tp, typename Alloc = alloc>
+    template <typename _Tp, typename Alloc = __malloc_alloc<0>>
     class vector {
         private:
             //three pointers pointed to the [start, last) and the end of the allocated memory
@@ -20,7 +20,7 @@ namespace my_stl {
             _Tp* last;
             _Tp* end_of_storage;
             //allocator for memory management
-            my_simple_alloc<_Tp, Alloc> data_allocator;
+            new_allocator<_Tp> data_allocator;
             
         public:
             //all the nested data type
@@ -147,8 +147,9 @@ namespace my_stl {
             }
 
             //move assignment
-            const vector<_Tp>& operator=(vector<_Tp> &&rhs) noexcept {
+            vector<_Tp>& operator=(vector<_Tp> &&rhs) noexcept {
                 if (this != &rhs) {
+                    deallocate();
                     start = rhs.start;
                     last = rhs.last;
                     end_of_storage = rhs.end_of_storage;

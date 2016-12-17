@@ -157,6 +157,10 @@ namespace my_stl {
             using const_pointer = const _Tp*;
             using reference = _Tp&;
             using const_reference = const _Tp&;
+            
+            //reverse iterator, added c++11
+            using reverse_iterator = my_stl::reverse_iterator<iterator>;
+            using const_reverse_iterator = my_stl::reverse_iterator<const_iterator>;
 
         protected: 
             using __node = __list_node<_Tp>;
@@ -241,6 +245,16 @@ namespace my_stl {
 
             template<typename InputIterator>
             list(InputIterator first, InputIterator last);
+
+            //copy assign
+            list& operator=(std::initializer_list<value_type> il) {
+                assign(il);
+                return *this;
+            }
+
+            list& operator=(const list& x);
+
+            list& operator=(list&& x) noexcept;
             
             //------------------------Destructors-------------------------------
 			~list() {
@@ -251,6 +265,8 @@ namespace my_stl {
                     __destroy_node(__end);
                 }
 			}
+
+            //--------------------------------begin and end----------------------------------//
             
             //begin, end, front, back, size, maxsize
             iterator begin() noexcept{
@@ -269,6 +285,24 @@ namespace my_stl {
                 return const_iterator(__end);
             }
 
+            //--------------------------------rbegin and rend---------------------------------//
+            reverse_iterator rbegin() noexcept {
+                return reverse_iterator(end());
+            }
+
+            const_reverse_iterator rbegin() const noexcept {
+                return const_reverse_iterator(end());
+            }
+
+            reverse_iterator rend() noexcept {
+                return reverse_iterator(begin());
+            }
+
+            const_reverse_iterator rend() const noexcept {
+                return const_reverse_iterator(begin());
+            }
+
+            //------------------------------cbegin and cend----------------------------------//
             const_iterator cbegin() const noexcept{
                 return const_iterator(__end -> next);
             };
@@ -276,6 +310,17 @@ namespace my_stl {
             const_iterator cend() const noexcept{
                 return const_iterator(__end);
             }
+
+            //------------------------------rcbegin and rcend---------------------------------//
+            const_reverse_iterator crbegin() const noexcept {
+                return const_reverse_iterator(cend());
+            }
+
+            const_reverse_iterator crend() const noexcept {
+                return const_reverse_iterator(cbegin());
+            }
+
+            //------------------------------front and back------------------------------------//
 
             reference front() {
                 return *begin();
@@ -293,7 +338,7 @@ namespace my_stl {
                 return *(--cend());
             }
 
-            size_type max_type() const {
+            size_type max_size() const noexcept{
                 //from LLVM
                 return size_type(-1);
             }
@@ -384,9 +429,9 @@ namespace my_stl {
             //-----------------------------Splice operation--------------------------
             //-----------------------------------------------------------------------
             //entire list
-            void splice(const_iterator __position, list& __other);
+            void splice(const_iterator __position, list& __other) noexcept;
             
-            void splice(const_iterator __position, list&& __other);
+            void splice(const_iterator __position, list&& __other) noexcept;
             
             //single element
             void splice(const_iterator __position, list& __other, const_iterator __i);
@@ -400,6 +445,21 @@ namespace my_stl {
             void splice(const_iterator __position, list&& __other, 
                     const_iterator __first, const_iterator __last);
 
+            //-----------------------------------------------------------------------------
+            //-------------------------Merge operation ------------------------------------
+            //-----------------------------------------------------------------------------
+            void merge(list& x);
+
+            template<typename _Comp>
+            void merge(list& x, _Comp comp);
+
+            //-----------------------------------------------------------------------
+            //-----------------------------Sort operation--------------------------
+            //-----------------------------------------------------------------------
+            void sort();
+
+            template<typename _Comp>
+            void sort(_Comp comp);
     };
 
     //non member swap function, no throw
@@ -458,7 +518,7 @@ namespace my_stl {
     template<typename _Tp, typename Alloc>
     template<typename InputIterator>
     inline void list<_Tp, Alloc>::assign(InputIterator first, InputIterator last) {
-        __assign_dispatch(first, last, _Is_integer<InputIterator>::integral());
+        __assign_dispatch(first, last, typename _Is_integer<InputIterator>::integral());
     }
 
     //fill assign
@@ -498,7 +558,7 @@ namespace my_stl {
     inline void list<_Tp, Alloc>::__assign_dispatch(_InputIterator first, _InputIterator last, __false_type) {
         //reuse the allocated space
         auto iter = begin();
-        for (; iter != end(), first != last; ++iter, ++first) {
+        for (; iter != end() && first != last; ++iter, ++first) {
             *iter = *first;
         }
         if (iter == end()) {
@@ -519,6 +579,26 @@ namespace my_stl {
         auto _e2 = rhs.cend();
         for (; _it1 != _e1 && _it2 != _e2 && *_it1 == *_it2; ++_it1, ++_it2) {}
         return _it1 == _e1 && _it2 == _e2;
+    }
+
+    //copy assign
+    template<typename _Tp, typename Alloc>
+    inline list<_Tp, Alloc>& list<_Tp, Alloc>::operator=(const list& _x) {
+        //make strong exception gurantee
+        list temp(_x);
+        swap(temp);
+        return *this;
+    }
+
+
+    //move assign
+    template<typename _Tp, typename Alloc>
+    inline list<_Tp, Alloc>& list<_Tp, Alloc>::operator=(list&& _x) noexcept{
+        if (this != &_x) {
+            clear();
+            splice(end(), _x);
+        }
+        return *this;
     }
 
 
@@ -676,7 +756,7 @@ namespace my_stl {
     //LLVM implementation is preferred
     //entire list
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::splice(const_iterator __pos, list& __x) {
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list& __x) noexcept{
         if (!__x.empty()) {
             //unlink the old list
             __node_ptr first = __x.__end -> next;
@@ -688,7 +768,7 @@ namespace my_stl {
     }
 
     template<typename _Tp, typename Alloc>
-    void list<_Tp, Alloc>::splice(const_iterator __pos, list&& __x) {
+    void list<_Tp, Alloc>::splice(const_iterator __pos, list&& __x) noexcept{
         //just a delegate method
         splice(__pos, __x);
     }
@@ -727,6 +807,55 @@ namespace my_stl {
             const_iterator __last) {
         //just a delegate method
         splice(__pos, __x, __first, __last);
+    }
+    
+    //-----------------------------------------------------------------------
+    //-----------------------------Merge operation--------------------------
+    //-----------------------------------------------------------------------
+    //merge, assume the two lists have been sorted already
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::merge(list& _x) {
+
+    }
+
+    template<typename _Tp, typename Alloc>
+    template<typename _Comp>
+    void list<_Tp, Alloc>::merge(list& _x, _Comp comp) {
+        //do not merge with ourself
+        //llvm implementation is referred
+        if (this != &_x) {
+            __node_ptr _f1 = begin().node_ptr;
+            const __node_ptr _l1 = end().node_ptr;
+            __node_ptr _f2 = _x.begin().node_ptr;
+            const __node_ptr _l2 = _x.end().node_ptr;
+            for (;_f1 != _l1 && _f2 != _l2;) {
+                if (comp(_f2 -> val, _f1 -> val)) {
+                    //note that f2 is less than f1, we have to insert f2 into before f1
+                    //if we unlink f2 and insert into f1, we might need to repeatedly set
+                    //a lot of pointers, think about the case when all the subsequent nodes in
+                    //f2 is less than f1
+                    //What we want to do is unlink as many nodes as possible at once and link it
+                    __node_ptr _temp = _f2 -> next;
+                    for (; _temp != _l2 && comp(_temp -> val, _f1 -> val); _temp = _temp -> next);
+                    __node_ptr _e2 = _temp -> prev;
+                    __unlink_nodes(_f2, _e2);
+                    __link_nodes(_f1, _f2, _e2);
+                    _f2 = _temp;
+                }
+                _f1 = _f1 -> next;
+            }
+            splice (const_iterator(_l1), _x);
+        }
+        
+    }
+
+    //-----------------------------------------------------------------------
+    //-----------------------------Sort operation--------------------------
+    //-----------------------------------------------------------------------
+    template<typename _Tp, typename Alloc>
+    void list<_Tp, Alloc>::sort() {
+        //if size less than or equal 1, return
+        if (__end -> next -> next == __end) return;
     }
 }
 
