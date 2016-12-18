@@ -2,6 +2,9 @@
 //implement several important functions
 //this implementation is based on my understanding of the sgi stl implementation of m_algobase.h
 
+#ifndef __MY_STL_ALGOBASE_H
+#define __MY_STL_ALGOBASE_H
+
 #include "m_type_traits.h"
 #include <string.h>    //for memmove
 #include <cstddef>    //for ptrdiff_t  size_t
@@ -264,3 +267,4 @@ namespace my_stl {
         }
     }
 }
+#endif
