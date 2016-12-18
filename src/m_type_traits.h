@@ -152,6 +152,11 @@ namespace my_stl {
 
     //specialized from
     template<>
+    struct _Is_integer<bool> {
+        typedef __true_type integral;
+    };
+
+    template<>
     struct _Is_integer<int> {
         typedef __true_type integral;
     };
@@ -197,9 +202,49 @@ namespace my_stl {
     };
 
     template<>
+    struct _Is_integer<signed char> {
+        typedef __true_type integral;
+    };
+
+    template<>
     struct _Is_integer<unsigned char> {
         typedef __true_type integral;
     };
+
+    //----------is same type----------------
+    template <typename, typename>
+    struct __are_same {
+        typedef __false_type __type;
+        enum {__value = 1};
+    };
+
+    template <typename _Tp>
+    struct __are_same<_Tp, _Tp> {
+        typedef __true_type __type;
+        enum {__value = 0};
+    };
+
+
+    //------------remove reference-----------
+    template <typename _Tp> 
+    struct remove_reference {
+        typedef _Tp type;
+    };
+
+    template <typename _Tp>
+    struct remove_reference<_Tp&> {
+        typedef _Tp type;
+    };
+
+    template <typename _Tp>
+    struct remove_reference<_Tp&&> {
+        typedef _Tp type;
+    };
+
+
+    //c++14, type aliasing allows us to do so
+    template <typename _Tp>
+    using remove_reference_t = typename remove_reference<_Tp>::type;
 }
 
 #endif
