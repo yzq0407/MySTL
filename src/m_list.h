@@ -4,6 +4,7 @@
 #define __MY_STL_LIST_H
 
 #include "m_memory.h"         //for allocator
+#include "m_algorithm.h"        //for functors
 #include "m_iterator.h"       //for iterator type traits
 #include <cstddef>            //for std::ptrdiff_t
 
@@ -407,7 +408,7 @@ namespace my_stl {
             }
 
             size_type size() const noexcept{
-                return distance(cbegin(), cend());
+                return my_stl::distance(cbegin(), cend());
             }
 
             //push and pop
@@ -418,6 +419,13 @@ namespace my_stl {
             void pop_back();
             
             void pop_front();
+
+            //emplace, variadic argument
+            template <typename... Args>
+            void emplace_front(Args&&... args);
+
+            template <typename... Args>
+            void emplace_back(Args&&... args);
 
             //remove the same value
             void remove(const value_type& value);
@@ -687,6 +695,25 @@ namespace my_stl {
         insert(cbegin(), value);
     }
     
+    //emplace, variadic template argument
+    template<typename _Tp, typename Alloc>
+    template<typename... Args>
+    void list<_Tp, Alloc>::emplace_front(Args&&... args) {
+        //allocate a new node
+        __node_ptr _a_node= __get_node();
+        construct(&_a_node->val, std::forward<Args>(args)...);
+        __link_nodes(__end -> next, _a_node, _a_node);
+    }
+
+    template<typename _Tp, typename Alloc>
+    template<typename... Args>
+    void list<_Tp, Alloc>::emplace_back(Args&&... args) {
+        //allocate a new node
+        __node_ptr _a_node= __get_node();
+        construct(&_a_node->val, std::forward<Args>(args)...);
+        __link_nodes(__end, _a_node, _a_node);
+    }
+
     //erase implementations
     template<typename _Tp, typename Alloc>
     inline __list_iterator<_Tp> list<_Tp, Alloc>::erase(list::const_iterator __position) {
@@ -721,6 +748,7 @@ namespace my_stl {
     inline void list<_Tp, Alloc>::pop_front() {
         erase(cbegin());
     }
+
 
     template<typename _Tp, typename Alloc>
     void list<_Tp, Alloc>::remove(const _Tp& value) {
@@ -815,7 +843,7 @@ namespace my_stl {
     //merge, assume the two lists have been sorted already
     template<typename _Tp, typename Alloc>
     void list<_Tp, Alloc>::merge(list& _x) {
-
+        merge(_x, less<_Tp>());
     }
 
     template<typename _Tp, typename Alloc>
@@ -854,8 +882,40 @@ namespace my_stl {
     //-----------------------------------------------------------------------
     template<typename _Tp, typename Alloc>
     void list<_Tp, Alloc>::sort() {
+        sort(less<_Tp>());
+    }
+
+    template<typename _Tp, typename Alloc>
+    template<typename _Comp>
+    void list<_Tp, Alloc>::sort(_Comp comp) {
         //if size less than or equal 1, return
         if (__end -> next -> next == __end) return;
+        //one of the most awesome algorithm in STL!
+        //using a iterative merge sort to sort the whole list, but it is sorted bottom up
+        //and technically we only need O(1) space to do the merge sort
+        //
+        list _carry;         //carry is the auxillary list that merge from bottom-up every iteration
+        list _counter[64];   //counter keeps the sorted list with counter[i].size() in [2^(i-1) 2^i)
+        int _fill = 0;       //fill keeps the highest filled list(largest size) idx - 1 in the counter
+        //so if there are still elements in the list, take one each time, merge up the ladder 
+        //if we see a empty slot, just stop there and put the carry list in
+        for (; !empty(); ) {
+            //take one element
+            _carry.splice(_carry.end(), *this, begin());
+            //move up the ladder
+            int _level = 0;
+            for (; _level < _fill && !_counter[_level].empty(); ) {
+                _carry.merge(_counter[_level++], comp);
+            }
+            //either we at the upmost level, or we see an empty slot
+            _carry.swap(_counter[_level]);
+            if (_level == _fill)    ++_fill;      //if the upmost level has been filled, move up one
+        }
+        //now carry the last merge, from the bottom all the way to the top
+        for (int _level = 1; _level < _fill; ++_level) {
+            _counter[_level].merge(_counter[_level - 1], comp);
+        }
+        swap(_counter[_fill - 1]);
     }
 }
 
