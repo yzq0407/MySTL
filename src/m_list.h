@@ -526,7 +526,7 @@ namespace my_stl {
     template<typename _Tp, typename Alloc>
     template<typename InputIterator>
     inline void list<_Tp, Alloc>::assign(InputIterator first, InputIterator last) {
-        __assign_dispatch(first, last, typename _Is_integer<InputIterator>::integral());
+        __assign_dispatch(first, last, typename is_integer<InputIterator>::type());
     }
 
     //fill assign
@@ -643,7 +643,7 @@ namespace my_stl {
     inline typename list<_Tp, Alloc>::iterator 
     list<_Tp, Alloc>::insert(const_iterator __position, InputIterator first, InputIterator last) {
         return __insert_dispatch(__position, first, last, 
-                typename _Is_integer<InputIterator>::integral());
+                typename is_integer<InputIterator>::type());
     }
 
     //move insert
