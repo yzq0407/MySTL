@@ -1,5 +1,5 @@
 CC = clang++
-CFLAGS = -Wall -std=c++11 
+CFLAGS = -Wall -O3 -std=c++14 
 
 EXECUTABLES = main
 OBJECTS = test_main.o test_objects.o m_vector_test.o m_alloc_test.o m_list_test.o m_traits_test.o
