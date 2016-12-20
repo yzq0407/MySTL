@@ -5,57 +5,171 @@
 #ifndef __MY_STL_TYPE_TRAITS_H
 #define __MY_STL_TYPE_TRAITS_H
 
+#include <cstddef> //for nullptr_t
+
 namespace my_stl {
-//two types to identify true and false, we cannot use variables since we want compile time
-//identification of the types
-    struct __true_type {
-        enum {value = 1};
+    //************************************************************
+    //                      synopsis
+    //************************************************************
+    template<typename _Tp, _Tp _val> struct integral_constant;
+    template<typename _Tp> struct is_void;
+    template<typename _Tp> struct is_null_pointer;
+    template<typename _Tp> struct is_integral;
+    template<typename _Tp> struct is_floating_point;
+    template<typename _Tp> struct is_array;
+    template<typename _Tp> struct is_pointer;
+    template<typename _Tp> struct is_lvalue_reference;
+    template<typename _Tp> struct is_rvalue_reference;
+    template<typename _Tp> struct is_member_object_pointer;
+    template<typename _Tp> struct is_member_function_pointer;
+    template<typename _Tp> struct is_enum;
+    template<typename _Tp> struct is_union;
+    template<typename _Tp> struct is_class;
+    template<typename _Tp> struct is_function;
+
+    //secondary classification traits
+    template <class T> struct is_reference;
+    template <class T> struct is_arithmetic;
+    template <class T> struct is_fundamental;
+    template <class T> struct is_member_pointer;
+    template <class T> struct is_scalar;
+    template <class T> struct is_object;
+    template <class T> struct is_compound;
+
+    //cv properties and transformation
+    template <class T> struct is_const;
+    template <class T> struct is_volatile;
+    template <class T> struct remove_const;
+    template <class T> struct remove_volatile;
+    template <class T> struct remove_cv;
+    template <class T> struct add_const;
+    template <class T> struct add_volatile;
+    template <class T> struct add_cv;
+
+    //************************************************************
+    //                      end of synopsis
+    //************************************************************
+
+
+
+    //integral constant, provide compile time constant
+    template <typename _Tp, _Tp _val>
+    struct integral_constant {
+        using value_type = _Tp;
+        using type = integral_constant<_Tp, _val>;
+
+        static constexpr _Tp value = _val;
+
+        constexpr operator _Tp() const noexcept {return _val;}
+        constexpr _Tp operator()() const noexcept {return _val;}
     };
-    struct __false_type {
-        enum {value = 0};
+
+    //now we can typedef true type and false type to be integral type
+    typedef integral_constant<bool, true> __true_type;
+    typedef integral_constant<bool, false> __false_type;
+    typedef integral_constant<bool, true> true_type;
+    typedef integral_constant<bool, false> false_type;
+
+    //a conditional evaluation struct comes really handy if we are evaluation 
+    //sequence of boolean clause
+    template <bool, typename _If, typename _Else>
+    struct conditional {
+        //this is the default true
+        using type = _If;
     };
+
+    template <typename _If, typename _Else>
+    struct conditional<false, _If, _Else> {
+        //partially specialize the false situation
+        using type = _Else;
+    };
+
+    //c++14
+    template <bool _B, typename _If, typename _Else>
+    using conditional_t = typename conditional<_B, _If, _Else>::type;
+
+    //----------is same type----------------
+    template <typename, typename>
+    struct is_same: false_type {};
+
+    template <typename _Tp>
+    struct is_same<_Tp, _Tp>: true_type {};
+
 
     //all the logical operation applied to true/false type
     //-------------logical or-------------------------
-    template <typename... _B>
-    struct __or__ {
-        typedef __false_type type;
-        enum {value = 0};
-    };
+    template <typename...>
+    struct __or__: false_type{};
 
-    template <typename... _B>
-    struct __or__ <__true_type, _B...> {
-        typedef __true_type type;
-        enum {value = 1};
-    };
+    template <typename _B>
+    struct __or__<_B>: _B {};
 
-    template <typename... _B>
-    struct __or__ <__false_type, _B...> {
-        typedef typename __or__<_B...>::type type;
-        enum {value = __or__<_B...>::value};
-    };
+    template <typename _B1, typename _B2>
+    struct __or__<_B1, _B2>: conditional_t<_B1::value, _B1, _B2> {};
+
+    template <typename _B1, typename _B2, typename _B3, typename... _Bn>
+    struct __or__<_B1, _B2, _B3, _Bn...>:
+            conditional_t<_B1::value, _B1, __or__<_B2, _B3, _Bn...>> {};
 
     //--------------logical and------------------------
-    template <typename... _B>
-    struct __and__ {
-        typedef __true_type type;
-        enum {value = 1};
-    };
+    template <typename...>
+    struct __and__: true_type{};
 
-    template <typename... _B>
-    struct __and__ <__false_type, _B...> {
-        typedef __false_type type;
-        enum {value = 0};
-    };
+    template <typename _B>
+    struct __and__<_B>: _B {};
 
-    template <typename... _B>
-    struct __and__ <__true_type, _B...> {
-        typedef typename __and__<_B...>::type type;
-        enum {value = __and__<_B...>::value};
-    };
+    template <typename _B1, typename _B2>
+    struct __and__<_B1, _B2>: conditional_t<_B1::value, _B2, _B1> {};
+
+    template <typename _B1, typename _B2, typename _B3, typename... _Bn>
+    struct __and__<_B1, _B2, _B3, _Bn...>:
+            conditional_t<_B1::value, __and__<_B2, _B3, _Bn...>, _B1> {};
+
+    //primary classification traits:
+
+    //-----------------is void---------------------------
+    template <typename _Tp>
+    struct is_void: is_same<void, typename remove_cv<_Tp>::type> {};
+
+    template <typename _Tp>
+    constexpr bool is_void_v = is_void<_Tp>::value;
+
+    //-----------------is nullptr-------------------------
+    template <typename _Tp>
+    struct is_null_pointer: 
+        is_same<std::nullptr_t, typename remove_cv<_Tp>::type>{};
+
+    template <typename _Tp>
+    constexpr bool is_null_pointer_v = is_null_pointer<_Tp>::value;
+
+    //-----------------is union----------------------------
+    //"is union" is a compiler specific implementation, here we do not assume
+    //any of the union
+    template <typename _Tp>
+    struct is_union: false_type {};
+
+    template <typename _Tp>
+    constexpr bool is_union_v = is_union<_Tp>::value;
+
+    //-----------------is class----------------------------
+    //implemented using SFINAE idiom
+    struct __is_class_aux_struc{char _member[2];};
+
+    template <typename _Tp>
+    char __is_class_aux_func (int _Tp::*);
+
+    template <typename _Tp>
+    __is_class_aux_struc __is_class_aux_func(...);
+
+    template <typename _Tp>
+    struct is_class: integral_constant<bool, 
+        sizeof(__is_class_aux_func<_Tp>(0)) == 1> {};
+
+    template <typename _Tp>
+    constexpr bool is_class_v = is_class<_Tp>::value;
 
 
-    //the core part, exact the type information
+    //Exact the type information
     template <typename TYPE>
     struct __type_traits {
         //be conservative, meaning we want to set all the type to be false
@@ -190,83 +304,45 @@ namespace my_stl {
 
     //---------------------integer traits---------------------
     template<typename _Tp>
-    struct _Is_integer {
-        typedef __false_type integral;
-    };
+    struct is_integer: false_type {};
 
     //specialized from
     template<>
-    struct _Is_integer<bool> {
-        typedef __true_type integral;
-    };
-
-    template<>
-    struct _Is_integer<int> {
-        typedef __true_type integral;
-    };
-
-    template<>
-    struct _Is_integer<unsigned int> {
-        typedef __true_type integral;
-    };
-
-    template<>
-    struct _Is_integer<unsigned short> {
-        typedef __true_type integral;
-    };
+    struct is_integer<bool>:true_type {};
     
     template<>
-    struct _Is_integer<short> {
-        typedef __true_type integral;
-    };
+    struct is_integer<int>:true_type {};
+
+    template<>
+    struct is_integer<unsigned int>:true_type{};
+
+    template<>
+    struct is_integer<unsigned short>:true_type {};
     
     template<>
-    struct _Is_integer<long> {
-        typedef __true_type integral;
-    };
-
-    template<>
-    struct _Is_integer<unsigned long> {
-        typedef __true_type integral;
-    };
-
-    template<>
-    struct _Is_integer<long long> {
-        typedef __true_type integral;
-    };
+    struct is_integer<short>:true_type {};
     
     template<>
-    struct _Is_integer<unsigned long long> {
-        typedef __true_type integral;
-    };
+    struct is_integer<long>:true_type {};
+
+    template<>
+    struct is_integer<unsigned long>:true_type {};
+
+    template<>
+    struct is_integer<long long>:true_type {};
     
     template<>
-    struct _Is_integer<char> {
-        typedef __true_type integral;
-    };
+    struct is_integer<unsigned long long>:true_type {};
+    
+    template<>
+    struct is_integer<char>: true_type{};
 
     template<>
-    struct _Is_integer<signed char> {
-        typedef __true_type integral;
-    };
+    struct is_integer<signed char>: true_type{};
 
     template<>
-    struct _Is_integer<unsigned char> {
-        typedef __true_type integral;
-    };
+    struct is_integer<unsigned char>:true_type {};
 
-    //----------is same type----------------
-    template <typename, typename>
-    struct __are_same{
-        typedef __false_type type;
-        enum {value = 0};
-    };
-
-    template <typename _Tp>
-    struct __are_same<_Tp, _Tp> {
-        typedef __true_type type;
-        enum {value = 1};
-    };
 
 
     //------------remove reference-----------
