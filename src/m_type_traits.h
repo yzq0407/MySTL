@@ -291,7 +291,8 @@ namespace my_stl {
     constexpr bool is_reference_v = is_reference<_Tp>::value;
 
 
-    //---------------is reference---------------------------------
+    //---------------is function----------------------------------
+
     //copied from cppference.com website
     template<class>
     struct is_function: false_type { };
@@ -300,7 +301,6 @@ namespace my_stl {
     template<class Ret, class... Args>
     struct is_function<Ret(Args...)>: true_type {};
 
-    //---------------is function----------------------------------
 
     // specialization for variadic functions such as std::printf
     template<class Ret, class... Args>
@@ -356,16 +356,61 @@ namespace my_stl {
 
     template<typename _Tp>
     constexpr bool is_function_v = is_function<_Tp>::value;
-
     // specializations for noexcept versions of all the above (C++17 and later)
     // it has to add noexcept for all the sepcialization forms since it was counted
     // as the function signature in C++17
+    // note that the llvm implementation is is_function is a bit different, which use SFINAE idiom:
+    /* namespace __libcpp_is_function_imp */
+    /* { */
+    /*     struct __dummy_type {}; */
+    /*     template <class _Tp> char  __test(_Tp*); */
+    /*     template <class _Tp> char __test(__dummy_type); */
+    /*     template <class _Tp> __two __test(...); */
+    /*     template <class _Tp> _Tp&  __source(int); */
+    /*     template <class _Tp> __dummy_type __source(...); */
+    /* } */
+
+    /* template <class _Tp, bool = is_class<_Tp>::value || */
+    /*     is_union<_Tp>::value || */
+    /*     is_void<_Tp>::value  || */
+    /*     is_reference<_Tp>::value || */
+    /*     __is_nullptr_t<_Tp>::value > */
+    /*     struct __libcpp_is_function */
+    /*     : public integral_constant<bool, sizeof(__libcpp_is_function_imp::__test<_Tp>(__libcpp_is_function_imp::__source<_Tp>(0))) == 1> */
+    /*     {}; */
+    /* template <class _Tp> struct __libcpp_is_function<_Tp, true> : public false_type {}; */
+
+    /* template <class _Tp> struct _LIBCPP_TYPE_VIS_ONLY is_function */
+    /*         : public __libcpp_is_function<_Tp> {}; */
+
+    //-----------------is member object pointer---------------------------------
+    //copied from cppreference
+    template <typename _Tp>
+    struct is_member_object_pointer: integral_constant<bool, is_member_pointer<_Tp>::value &&
+                                     is_member_function_pointer<_Tp>::value> {};
+    //c++17
+    template <typename _Tp>
+    constexpr bool is_member_object_pointer_v = is_member_object_pointer<_Tp>::value;
+
+    //----------------is member pointer-----------------------------------------
+    template <typename _Tp>
+    struct __is_member_pointer_aux: false_type {};
+
+    template <typename _Tp, typename _Up>
+    struct __is_member_pointer_aux<_Tp _Up::*>: true_type{};
+
+    template <typename _Tp>
+    struct is_member_pointer: __is_member_pointer_aux<_Tp> {};
+
+    template <typename _Tp>
+    constexpr bool is_member_pointer_v = is_member_pointer<_Tp>::value;
 
     //-----------------type traits-------------------------------
     //it is the original effort in SGI STL implementation to using TMP to 
     //staticly dispatch functions based on there type(whether can we call memmove/memcpy etc)
     //it is not used in any of the modern compiler (MSVC, GCC, LLVM-Clang) but I still keep it
     //as a reference
+    
     template <typename TYPE>
     struct __type_traits {
         //be conservative, meaning we want to set all the type to be false
