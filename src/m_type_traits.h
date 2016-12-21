@@ -131,6 +131,7 @@ namespace my_stl {
     template <typename _Tp>
     struct is_void: is_same<void, typename remove_cv<_Tp>::type> {};
 
+    //c++17
     template <typename _Tp>
     constexpr bool is_void_v = is_void<_Tp>::value;
 
@@ -139,6 +140,7 @@ namespace my_stl {
     struct is_null_pointer: 
         is_same<std::nullptr_t, typename remove_cv<_Tp>::type>{};
 
+    //c++17
     template <typename _Tp>
     constexpr bool is_null_pointer_v = is_null_pointer<_Tp>::value;
 
@@ -165,11 +167,205 @@ namespace my_stl {
     struct is_class: integral_constant<bool, 
         sizeof(__is_class_aux_func<_Tp>(0)) == 1> {};
 
+    //c++17
     template <typename _Tp>
     constexpr bool is_class_v = is_class<_Tp>::value;
 
+    //---------------------integer traits---------------------
+    //note that I made a typo to be is_integer (it is supposed to be is_integral
+    //but since it has been intensively used, I tend to let it stay as it is)
+    template<typename _Tp>
+    struct is_integer: false_type {};
 
-    //Exact the type information
+    //specialized from
+    template<>
+    struct is_integer<bool>:true_type {};
+    
+    template<>
+    struct is_integer<int>:true_type {};
+
+    template<>
+    struct is_integer<unsigned int>:true_type{};
+
+    template<>
+    struct is_integer<unsigned short>:true_type {};
+    
+    template<>
+    struct is_integer<short>:true_type {};
+    
+    template<>
+    struct is_integer<long>:true_type {};
+
+    template<>
+    struct is_integer<unsigned long>:true_type {};
+
+    template<>
+    struct is_integer<long long>:true_type {};
+    
+    template<>
+    struct is_integer<unsigned long long>:true_type {};
+    
+    template<>
+    struct is_integer<char>: true_type{};
+
+    template<>
+    struct is_integer<signed char>: true_type{};
+
+    template<>
+    struct is_integer<unsigned char>:true_type {};
+
+    //c++17
+    template<typename _Tp>
+    constexpr bool is_intergral_v = is_integer<_Tp>::value;
+
+    //----------------is floating points traits------------------
+    template<typename _Tp>
+    struct is_floating_point: false_type {};
+
+    template<>
+    struct is_floating_point<double>:true_type{};
+
+    template<>
+    struct is_floating_point<float>:true_type{};
+    
+    template<>
+    struct is_floating_point<long double>:true_type{};
+
+    //c++17
+    template<typename _Tp>
+    constexpr bool is_floating_point_v = is_floating_point<_Tp>::value;
+
+    //-----------------is array--------------------------------
+    template<typename _Tp>
+    struct is_array: false_type{};
+
+    template<typename _Tp, size_t _N>
+    struct is_array<_Tp[_N]>: true_type{};
+    
+    template<typename _Tp>
+    struct is_array<_Tp[]>: true_type{};
+
+    //c++17
+    template<typename _Tp>
+    constexpr bool is_array_v = is_array<_Tp>::value;
+
+    //----------------is pointer------------------------------
+    template<typename _Tp>
+    struct __is_pointer_aux: false_type{};
+
+    template<typename _Tp>
+    struct __is_pointer_aux<_Tp*>: true_type{};
+
+    template<typename _Tp>
+    struct is_pointer: __is_pointer_aux<typename remove_cv<_Tp>::type> {};
+
+    template<typename _Tp>
+    constexpr bool is_pointer_v = is_pointer<_Tp>::value;
+
+    //--------------is lvalue/rvalue reference--------------------
+    template<typename _Tp>
+    struct is_lvalue_reference: false_type{};
+
+    template<typename _Tp>
+    struct is_lvalue_reference<_Tp&>: true_type{};
+
+    template<typename _Tp>
+    struct is_rvalue_reference: false_type{};
+
+    template<typename _Tp>
+    struct is_rvalue_reference<_Tp&&>: false_type{};
+
+    //c++17
+    template<typename _Tp>
+    constexpr bool is_lvalue_reference_v = is_lvalue_reference<_Tp>::value;
+
+    template<typename _Tp>
+    constexpr bool is_rvalue_reference_v = is_rvalue_reference<_Tp>::value;
+
+    //---------------is reference---------------------------------
+    template<typename _Tp>
+    struct is_reference: __or__<typename is_lvalue_reference<_Tp>::type,
+        typename is_rvalue_reference<_Tp>::type> {};
+
+    template<typename _Tp>
+    constexpr bool is_reference_v = is_reference<_Tp>::value;
+
+
+    //---------------is reference---------------------------------
+    //copied from cppference.com website
+    template<class>
+    struct is_function: false_type { };
+
+    // specialization for regular functions
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)>: true_type {};
+
+    //---------------is function----------------------------------
+
+    // specialization for variadic functions such as std::printf
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)>: true_type {};
+
+    // specialization for function types that have cv-qualifiers
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)const>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)volatile>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)const volatile>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)const>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)volatile>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)const volatile>: true_type {};
+
+    // specialization for function types that have ref-qualifiers
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...) &>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)const &>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)volatile &>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)const volatile &>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...) &>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)const &>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)volatile &>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)const volatile &>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...) &&>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)const &&>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)volatile &&>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args...)const volatile &&>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...) &&>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)const &&>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)volatile&&>: true_type {};
+    template<class Ret, class... Args>
+    struct is_function<Ret(Args..., ...)const volatile &&>: true_type {};
+
+    template<typename _Tp>
+    constexpr bool is_function_v = is_function<_Tp>::value;
+
+    // specializations for noexcept versions of all the above (C++17 and later)
+    // it has to add noexcept for all the sepcialization forms since it was counted
+    // as the function signature in C++17
+
+    //-----------------type traits-------------------------------
+    //it is the original effort in SGI STL implementation to using TMP to 
+    //staticly dispatch functions based on there type(whether can we call memmove/memcpy etc)
+    //it is not used in any of the modern compiler (MSVC, GCC, LLVM-Clang) but I still keep it
+    //as a reference
     template <typename TYPE>
     struct __type_traits {
         //be conservative, meaning we want to set all the type to be false
@@ -302,50 +498,7 @@ namespace my_stl {
     };
 
 
-    //---------------------integer traits---------------------
-    template<typename _Tp>
-    struct is_integer: false_type {};
-
-    //specialized from
-    template<>
-    struct is_integer<bool>:true_type {};
-    
-    template<>
-    struct is_integer<int>:true_type {};
-
-    template<>
-    struct is_integer<unsigned int>:true_type{};
-
-    template<>
-    struct is_integer<unsigned short>:true_type {};
-    
-    template<>
-    struct is_integer<short>:true_type {};
-    
-    template<>
-    struct is_integer<long>:true_type {};
-
-    template<>
-    struct is_integer<unsigned long>:true_type {};
-
-    template<>
-    struct is_integer<long long>:true_type {};
-    
-    template<>
-    struct is_integer<unsigned long long>:true_type {};
-    
-    template<>
-    struct is_integer<char>: true_type{};
-
-    template<>
-    struct is_integer<signed char>: true_type{};
-
-    template<>
-    struct is_integer<unsigned char>:true_type {};
-
-
-
-    //------------remove reference-----------
+        //------------remove reference-----------
     template <typename _Tp> 
     struct remove_reference {
         typedef _Tp type;

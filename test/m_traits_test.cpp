@@ -54,8 +54,6 @@ TEST(TypeTraitsTest, TestLogicalClauese) {
     static_assert(!__and__<false_type, true_type, true_type, true_type, true_type, true_type>::value, "and is not correct");
     static_assert(__and__<true_type, true_type, true_type>::value, "and is not correct");
 
-
-
     static_assert(!__or__<>::value, "or is not correct");
     static_assert(__or__<__true_type>::value, "or is not correct");
     static_assert(!__or__<__false_type>::value, "or is not correct");
@@ -90,4 +88,18 @@ TEST(TypeTraitsTest, TestRemoveReference) {
     ASSERT_EQ(flag, 1);
     flag = is_same<remove_reference_t<const volatile int&>, const volatile int>::value;
     ASSERT_EQ(flag, 1);
+}
+
+
+TEST(TypeTraitsTest, TestIsArray) {
+    static_assert(!is_array<int>::value, "is array failed");
+    static_assert(!is_array<std::string>::value, "is array failed");
+    static_assert(is_array<int[]>::value, "is array failed");
+    static_assert(is_array<int[5]>::value, "is array failed");
+    static_assert(is_array<std::string[]>::value, "is array failed");
+    static_assert(is_array<std::string[5]>::value, "is array failed");
+}
+
+TEST(TypeTraitsTest, TestIsFunction) {
+    int (*func) ();
 }
