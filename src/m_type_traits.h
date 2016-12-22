@@ -11,6 +11,7 @@ namespace my_stl {
     //************************************************************
     //                      synopsis
     //************************************************************
+    //primary classification traits
     template<typename _Tp, _Tp _val> struct integral_constant;
     template<typename _Tp> struct is_void;
     template<typename _Tp> struct is_null_pointer;
@@ -49,8 +50,6 @@ namespace my_stl {
     //************************************************************
     //                      end of synopsis
     //************************************************************
-
-
 
     //integral constant, provide compile time constant
     template <typename _Tp, _Tp _val>
@@ -94,6 +93,9 @@ namespace my_stl {
 
     template <typename _Tp>
     struct is_same<_Tp, _Tp>: true_type {};
+
+    template <typename _Tp, typename _Up>
+    constexpr bool is_same_v = is_same<_Tp, _Up>::value;
 
 
     //all the logical operation applied to true/false type
@@ -153,6 +155,15 @@ namespace my_stl {
     template <typename _Tp>
     constexpr bool is_union_v = is_union<_Tp>::value;
 
+    //-----------------is enum-----------------------------
+    //"is_enum" is a compiler specific implementation, here we do not assume
+    //any of the enum
+    template <typename _Tp>
+    struct is_enum: false_type{};
+
+    template <typename _Tp>
+    constexpr bool is_enum_v = is_enum<_Tp>::value;
+
     //-----------------is class----------------------------
     //implemented using SFINAE idiom
     struct __is_class_aux_struc{char _member[2];};
@@ -171,7 +182,7 @@ namespace my_stl {
     template <typename _Tp>
     constexpr bool is_class_v = is_class<_Tp>::value;
 
-    //---------------------integer traits---------------------
+    //---------------------is integer traits---------------------
     //note that I made a typo to be is_integer (it is supposed to be is_integral
     //but since it has been intensively used, I tend to let it stay as it is)
     template<typename _Tp>
@@ -216,7 +227,7 @@ namespace my_stl {
 
     //c++17
     template<typename _Tp>
-    constexpr bool is_intergral_v = is_integer<_Tp>::value;
+    constexpr bool is_integral_v = is_integer<_Tp>::value;
 
     //----------------is floating points traits------------------
     template<typename _Tp>
@@ -281,14 +292,6 @@ namespace my_stl {
 
     template<typename _Tp>
     constexpr bool is_rvalue_reference_v = is_rvalue_reference<_Tp>::value;
-
-    //---------------is reference---------------------------------
-    template<typename _Tp>
-    struct is_reference: __or__<typename is_lvalue_reference<_Tp>::type,
-        typename is_rvalue_reference<_Tp>::type> {};
-
-    template<typename _Tp>
-    constexpr bool is_reference_v = is_reference<_Tp>::value;
 
 
     //---------------is function----------------------------------
@@ -387,12 +390,48 @@ namespace my_stl {
     //copied from cppreference
     template <typename _Tp>
     struct is_member_object_pointer: integral_constant<bool, is_member_pointer<_Tp>::value &&
-                                     is_member_function_pointer<_Tp>::value> {};
+                                     !is_member_function_pointer<_Tp>::value> {};
     //c++17
     template <typename _Tp>
     constexpr bool is_member_object_pointer_v = is_member_object_pointer<_Tp>::value;
 
-    //----------------is member pointer-----------------------------------------
+    //-----------------is member function pointer--------------------------------
+    template <typename _Tp>
+    struct __is_member_function_pointer_aux: false_type {};
+
+    template <typename _Tp, typename _Up>
+    struct __is_member_function_pointer_aux<_Tp _Up::*>: is_function<_Tp> {};
+
+    template <typename _Tp>
+    struct is_member_function_pointer: __is_member_function_pointer_aux<typename remove_cv<_Tp>::type> {};
+
+    template <typename _Tp>
+    constexpr bool is_member_function_pointer_v = is_member_function_pointer<_Tp>::value;
+
+
+    //secondary classification traits:
+    //---------------is reference---------------------------------
+    template<typename _Tp>
+    struct is_reference: __or__<typename is_lvalue_reference<_Tp>::type,
+        typename is_rvalue_reference<_Tp>::type> {};
+
+    template<typename _Tp>
+    constexpr bool is_reference_v = is_reference<_Tp>::value;
+    //----------------is_arithmetic--------------------------------
+    template<typename _Tp>
+    struct is_arithmetic: integral_constant<bool, is_integral_v<_Tp> 
+                          || is_floating_point_v<_Tp>> {};
+
+    template <typename _Tp>
+    constexpr bool is_arithmetic_v = is_arithmetic<_Tp>::value;
+    //----------------is_fundamental-------------------------------
+    template <typename _Tp>
+    struct is_fundamental: integral_constant<bool, is_void_v<_Tp> 
+                           || is_null_pointer_v<_Tp>
+                           || is_arithmetic_v<_Tp>> {};
+    template <typename _Tp>
+    constexpr bool is_fundamental_v = is_fundamental<_Tp>::value;
+    //----------------is member pointer----------------------------
     template <typename _Tp>
     struct __is_member_pointer_aux: false_type {};
 
@@ -400,12 +439,163 @@ namespace my_stl {
     struct __is_member_pointer_aux<_Tp _Up::*>: true_type{};
 
     template <typename _Tp>
-    struct is_member_pointer: __is_member_pointer_aux<_Tp> {};
+    struct is_member_pointer: __is_member_pointer_aux<typename remove_cv<_Tp>::type> {};
 
     template <typename _Tp>
     constexpr bool is_member_pointer_v = is_member_pointer<_Tp>::value;
 
-    //-----------------type traits-------------------------------
+    //----------------is_scalar------------------------------------
+    template <typename _Tp>
+    struct is_scalar: integral_constant<bool, is_pointer_v<_Tp> 
+                           || is_null_pointer_v<_Tp>
+                           || is_member_pointer_v<_Tp>
+                           || is_enum_v<_Tp>
+                           || is_arithmetic_v<_Tp>> {};
+
+    template <typename _Tp>
+    constexpr bool is_scalar_v = is_scalar<_Tp>::value;
+    //----------------is_object------------------------------------
+    template <typename _Tp>
+    struct is_object: integral_constant<bool, is_scalar_v<_Tp> 
+                           || is_array_v<_Tp>
+                           || is_union_v<_Tp>
+                           || is_class_v<_Tp>>{};
+
+    template <typename _Tp>
+    constexpr bool is_object_v = is_object<_Tp>::value;
+    //----------------is_compound----------------------------------
+    template <typename _Tp>
+    struct is_compound: integral_constant<bool, !is_fundamental_v<_Tp>>{};
+
+    template <typename _Tp>
+    constexpr bool is_compound_v = is_compound<_Tp>::value;
+
+
+    //cv properties and transformation:
+    //----------------is_const---------------------------------------
+    template <typename _Tp> struct is_const: false_type{};
+
+    template <typename _Tp> struct is_const<_Tp const>: true_type{};
+
+    template <typename _Tp>
+    constexpr bool is_const_v = is_const<_Tp>::value;
+    //----------------is_volatile------------------------------------
+    template <typename _Tp> struct is_volatile: false_type{};
+
+    template <typename _Tp> struct is_volatile<volatile _Tp>: true_type{};
+
+    template <typename _Tp>
+    constexpr bool is_volatile_v = is_volatile<_Tp>::value;
+    //----------------remove_const-------------------------------------
+    template <typename _Tp>
+    struct remove_const {
+        typedef _Tp type;
+    };
+
+    template <typename _Tp>
+    struct remove_const <const _Tp> {
+        typedef _Tp type;
+    };
+
+    //c++14
+    template <typename _Tp>
+    using remove_const_t = typename remove_const<_Tp>::type;
+    //----------------remove_volatile-----------------------------------
+    template <typename _Tp>
+    struct remove_volatile {
+        typedef _Tp type;
+    };
+
+    template <typename _Tp>
+    struct remove_volatile <volatile _Tp> {
+        typedef _Tp type;
+    };
+
+    //c++14
+    template <typename _Tp>
+    using remove_volatile_t = typename remove_volatile<_Tp>::type;
+    //----------------remove_cv----------------------------------------
+    template <typename _Tp>
+    struct remove_cv {
+        typedef typename remove_volatile<typename remove_const<_Tp>::type>::type type;
+    };
+
+    //c++14
+    template <typename _Tp>
+    using remove_cv_t = typename remove_cv<_Tp>::type;
+    //----------------add_const----------------------------------------
+    //essentially, reference and function types cannot be const, we ignore it
+    template <typename _Tp, bool = is_function<_Tp>::value ||
+        is_reference<_Tp>::value || is_const<_Tp>::value>
+    struct __add_const_aux {
+        typedef _Tp type;
+    };
+
+    template <typename _Tp> 
+    struct __add_const_aux<_Tp, false> {
+        typedef const _Tp type;
+    };
+
+    template <typename _Tp>
+    struct add_const: __add_const_aux<_Tp> {};
+
+    //alternatively, it can be implemented like this(suggested by cppreference),
+    //by testing it is the same as the above implementation, since a const 
+    //reference/function does not make any sense.
+    //complier will automaticlly drop the const qualifier before these types
+    //
+    /* template <typename _Tp> */
+    /* struct add_const { */
+    /*     typedef const _Tp type; */
+    /* }; */
+
+    //c++14
+    template <typename _Tp>
+    using add_const_t = typename add_const<_Tp>::type;
+    //----------------add_volatile-------------------------------------
+    template <class T> struct add_volatile;
+    template <typename _Tp, bool = is_function<_Tp>::value ||
+        is_reference<_Tp>::value || is_const<_Tp>::value>
+    struct __add_volatile_aux {
+        typedef _Tp type;
+    };
+
+    template <typename _Tp> 
+    struct __add_volatile_aux<_Tp, false> {
+        typedef volatile _Tp type;
+    };
+
+    template <typename _Tp>
+    struct add_volatile: __add_volatile_aux<_Tp> {};
+
+    //c++14
+    template <typename _Tp>
+    using add_volatile_t = typename add_volatile<_Tp>::type;
+
+
+    //reference traits
+    //----------------remove_reference---------------------------------
+    template <typename _Tp> 
+    struct remove_reference {
+        typedef _Tp type;
+    };
+
+    template <typename _Tp>
+    struct remove_reference<_Tp&> {
+        typedef _Tp type;
+    };
+
+    template <typename _Tp>
+    struct remove_reference<_Tp&&> {
+        typedef _Tp type;
+    };
+
+    //c++14, type aliasing allows us to do so
+    template <typename _Tp>
+    using remove_reference_t = typename remove_reference<_Tp>::type;
+
+
+    //-----------------old type traits(SGI style)-----------------------
     //it is the original effort in SGI STL implementation to using TMP to 
     //staticly dispatch functions based on there type(whether can we call memmove/memcpy etc)
     //it is not used in any of the modern compiler (MSVC, GCC, LLVM-Clang) but I still keep it
@@ -543,65 +733,7 @@ namespace my_stl {
     };
 
 
-        //------------remove reference-----------
-    template <typename _Tp> 
-    struct remove_reference {
-        typedef _Tp type;
-    };
 
-    template <typename _Tp>
-    struct remove_reference<_Tp&> {
-        typedef _Tp type;
-    };
-
-    template <typename _Tp>
-    struct remove_reference<_Tp&&> {
-        typedef _Tp type;
-    };
-
-    //c++14, type aliasing allows us to do so
-    template <typename _Tp>
-    using remove_reference_t = typename remove_reference<_Tp>::type;
-
-    //------------remove const--------------
-    template <typename _Tp>
-    struct remove_const {
-        typedef _Tp type;
-    };
-
-    template <typename _Tp>
-    struct remove_const <const _Tp> {
-        typedef _Tp type;
-    };
-
-    //c++14
-    template <typename _Tp>
-    using remove_const_t = typename remove_const<_Tp>::type;
-
-    //----------remove volatile------------
-    template <typename _Tp>
-    struct remove_volatile {
-        typedef _Tp type;
-    };
-
-    template <typename _Tp>
-    struct remove_volatile <volatile _Tp> {
-        typedef _Tp type;
-    };
-
-    //c++14
-    template <typename _Tp>
-    using remove_volatile_t = typename remove_volatile<_Tp>::type;
-
-    //----------remove const and volatile----
-    template <typename _Tp>
-    struct remove_cv {
-        typedef typename remove_volatile<typename remove_const<_Tp>::type>::type type;
-    };
-
-    //c++14
-    template <typename _Tp>
-    using remove_cv_t = typename remove_cv<_Tp>::type;
 }
 
 #endif
