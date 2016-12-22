@@ -100,6 +100,56 @@ TEST(TypeTraitsTest, TestIsArray) {
     static_assert(is_array<std::string[5]>::value, "is array failed");
 }
 
-TEST(TypeTraitsTest, TestIsFunction) {
-    int (*func) ();
+namespace __testEmptyStruct {
+    struct empty1 {};
+    struct empty2 {
+        typedef int imp;
+        typedef double donald;
+    };
+    struct empty3: empty2 {};
+
+    struct empty4 {
+        void print(int i, double d) {
+            std::cout << i << d<< std::endl;
+        }
+
+        int getIncrement(int i) {
+            return i + 1;
+        }
+    };
+
+    struct solid1 {
+        int x = 1;
+    };
+
+    struct solid2 {
+        virtual void print(int i) {
+            std::cout << "solid : " << i << std::endl;
+        }
+    };
+
+    struct solid3: solid2 {};
+
+    struct solid4 {
+        char a = 'a';
+    };
+
+    struct solid5 {
+        bool b = true;
+    };
 }
+
+TEST(TypeTraitsTest, TestIsEmpty) {
+    using namespace __testEmptyStruct;
+    static_assert(is_empty_v<empty1>, "is_empty traits failed");
+    static_assert(is_empty_v<empty2>, "is_empty traits failed");
+    static_assert(is_empty_v<empty3>, "is_empty traits failed");
+    static_assert(is_empty_v<empty4>, "is_empty traits failed");
+    static_assert(!is_empty_v<solid1>, "is_empty traits failed");
+    static_assert(!is_empty_v<solid2>, "is_empty traits failed");
+    static_assert(!is_empty_v<solid3>, "is_empty traits failed");
+    static_assert(!is_empty_v<solid4>, "is_empty traits failed");
+    static_assert(!is_empty_v<solid5>, "is_empty traits failed");
+}
+
+
