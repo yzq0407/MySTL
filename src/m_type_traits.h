@@ -29,23 +29,27 @@ namespace my_stl {
     template<typename _Tp> struct is_function;
 
     //secondary classification traits
-    template <class T> struct is_reference;
-    template <class T> struct is_arithmetic;
-    template <class T> struct is_fundamental;
-    template <class T> struct is_member_pointer;
-    template <class T> struct is_scalar;
-    template <class T> struct is_object;
-    template <class T> struct is_compound;
+    template <typename _Tp> struct is_reference;
+    template <typename _Tp> struct is_arithmetic;
+    template <typename _Tp> struct is_fundamental;
+    template <typename _Tp> struct is_member_pointer;
+    template <typename _Tp> struct is_scalar;
+    template <typename _Tp> struct is_object;
+    template <typename _Tp> struct is_compound;
 
     //cv properties and transformation
-    template <class T> struct is_const;
-    template <class T> struct is_volatile;
-    template <class T> struct remove_const;
-    template <class T> struct remove_volatile;
-    template <class T> struct remove_cv;
-    template <class T> struct add_const;
-    template <class T> struct add_volatile;
-    template <class T> struct add_cv;
+    template <typename _Tp> struct is_const;
+    template <typename _Tp> struct is_volatile;
+    template <typename _Tp> struct remove_const;
+    template <typename _Tp> struct remove_volatile;
+    template <typename _Tp> struct remove_cv;
+    template <typename _Tp> struct add_const;
+    template <typename _Tp> struct add_volatile;
+    template <typename _Tp> struct add_cv;
+
+    //member introspection, missing quite a few
+    template <typename _Tp> struct is_empty;
+
 
     //************************************************************
     //                      end of synopsis
@@ -166,17 +170,19 @@ namespace my_stl {
 
     //-----------------is class----------------------------
     //implemented using SFINAE idiom
-    struct __is_class_aux_struc{char _member[2];};
+    namespace __is_class_imp {
+        struct __is_class_aux_struc{char _member[2];};
 
-    template <typename _Tp>
-    char __is_class_aux_func (int _Tp::*);
+        template <typename _Tp>
+        char __is_class_aux_func (int _Tp::*);
 
-    template <typename _Tp>
-    __is_class_aux_struc __is_class_aux_func(...);
+        template <typename _Tp>
+        __is_class_aux_struc __is_class_aux_func(...);
+    } //__is_class_imp
 
     template <typename _Tp>
     struct is_class: integral_constant<bool, 
-        sizeof(__is_class_aux_func<_Tp>(0)) == 1> {};
+        sizeof(__is_class_imp::__is_class_aux_func<_Tp>(0)) == 1> {};
 
     //c++17
     template <typename _Tp>
@@ -261,14 +267,16 @@ namespace my_stl {
     constexpr bool is_array_v = is_array<_Tp>::value;
 
     //----------------is pointer------------------------------
-    template<typename _Tp>
-    struct __is_pointer_aux: false_type{};
+    namespace __is_pointer_imp {
+        template<typename _Tp>
+        struct __is_pointer_aux: false_type{};
+
+        template<typename _Tp>
+        struct __is_pointer_aux<_Tp*>: true_type{};
+    } //__is_pointer_imp
 
     template<typename _Tp>
-    struct __is_pointer_aux<_Tp*>: true_type{};
-
-    template<typename _Tp>
-    struct is_pointer: __is_pointer_aux<typename remove_cv<_Tp>::type> {};
+    struct is_pointer: __is_pointer_imp::__is_pointer_aux<typename remove_cv<_Tp>::type> {};
 
     template<typename _Tp>
     constexpr bool is_pointer_v = is_pointer<_Tp>::value;
@@ -396,14 +404,16 @@ namespace my_stl {
     constexpr bool is_member_object_pointer_v = is_member_object_pointer<_Tp>::value;
 
     //-----------------is member function pointer--------------------------------
-    template <typename _Tp>
-    struct __is_member_function_pointer_aux: false_type {};
+    namespace __is_member_function_imp {
+        template <typename _Tp>
+        struct __is_member_function_pointer_aux: false_type {};
 
-    template <typename _Tp, typename _Up>
-    struct __is_member_function_pointer_aux<_Tp _Up::*>: is_function<_Tp> {};
+        template <typename _Tp, typename _Up>
+        struct __is_member_function_pointer_aux<_Tp _Up::*>: is_function<_Tp> {};
+    } //__is_member_function_imp
 
     template <typename _Tp>
-    struct is_member_function_pointer: __is_member_function_pointer_aux<typename remove_cv<_Tp>::type> {};
+    struct is_member_function_pointer: __is_member_function_imp::__is_member_function_pointer_aux<typename remove_cv<_Tp>::type> {};
 
     template <typename _Tp>
     constexpr bool is_member_function_pointer_v = is_member_function_pointer<_Tp>::value;
@@ -432,14 +442,16 @@ namespace my_stl {
     template <typename _Tp>
     constexpr bool is_fundamental_v = is_fundamental<_Tp>::value;
     //----------------is member pointer----------------------------
-    template <typename _Tp>
-    struct __is_member_pointer_aux: false_type {};
+    namespace __is_member_pointer_imp {
+        template <typename _Tp>
+        struct __is_member_pointer_aux: false_type {};
 
-    template <typename _Tp, typename _Up>
-    struct __is_member_pointer_aux<_Tp _Up::*>: true_type{};
+        template <typename _Tp, typename _Up>
+        struct __is_member_pointer_aux<_Tp _Up::*>: true_type{};
+    } //__is_member_pointer_imp
 
     template <typename _Tp>
-    struct is_member_pointer: __is_member_pointer_aux<typename remove_cv<_Tp>::type> {};
+    struct is_member_pointer: __is_member_pointer_imp::__is_member_pointer_aux<typename remove_cv<_Tp>::type> {};
 
     template <typename _Tp>
     constexpr bool is_member_pointer_v = is_member_pointer<_Tp>::value;
@@ -525,19 +537,21 @@ namespace my_stl {
     using remove_cv_t = typename remove_cv<_Tp>::type;
     //----------------add_const----------------------------------------
     //essentially, reference and function types cannot be const, we ignore it
-    template <typename _Tp, bool = is_function<_Tp>::value ||
-        is_reference<_Tp>::value || is_const<_Tp>::value>
-    struct __add_const_aux {
-        typedef _Tp type;
-    };
+    namespace __add_const_imp {
+        template <typename _Tp, bool = is_function<_Tp>::value ||
+            is_reference<_Tp>::value || is_const<_Tp>::value>
+        struct __add_const_aux {
+            typedef _Tp type;
+        };
 
-    template <typename _Tp> 
-    struct __add_const_aux<_Tp, false> {
-        typedef const _Tp type;
-    };
+        template <typename _Tp> 
+        struct __add_const_aux<_Tp, false> {
+            typedef const _Tp type;
+        };
+    } //__add_const_imp
 
     template <typename _Tp>
-    struct add_const: __add_const_aux<_Tp> {};
+    struct add_const:__add_const_imp:: __add_const_aux<_Tp> {};
 
     //alternatively, it can be implemented like this(suggested by cppreference),
     //by testing it is the same as the above implementation, since a const 
@@ -553,20 +567,21 @@ namespace my_stl {
     template <typename _Tp>
     using add_const_t = typename add_const<_Tp>::type;
     //----------------add_volatile-------------------------------------
-    template <class T> struct add_volatile;
-    template <typename _Tp, bool = is_function<_Tp>::value ||
-        is_reference<_Tp>::value || is_const<_Tp>::value>
-    struct __add_volatile_aux {
-        typedef _Tp type;
-    };
+    namespace __add_volatile_imp {
+        template <typename _Tp, bool = is_function<_Tp>::value ||
+            is_reference<_Tp>::value || is_const<_Tp>::value>
+        struct __add_volatile_aux {
+            typedef _Tp type;
+        };
 
-    template <typename _Tp> 
-    struct __add_volatile_aux<_Tp, false> {
-        typedef volatile _Tp type;
-    };
+        template <typename _Tp> 
+        struct __add_volatile_aux<_Tp, false> {
+            typedef volatile _Tp type;
+        };
+    } //__add_volatile_imp
 
     template <typename _Tp>
-    struct add_volatile: __add_volatile_aux<_Tp> {};
+    struct add_volatile: __add_volatile_imp::__add_volatile_aux<_Tp> {};
 
     //c++14
     template <typename _Tp>
@@ -594,6 +609,32 @@ namespace my_stl {
     template <typename _Tp>
     using remove_reference_t = typename remove_reference<_Tp>::type;
 
+
+    //member introspection, missing quite a few
+    //----------------is_empty-----------------------------------------
+    //this implementation assume _Tp is not final
+    namespace __is_empty_imp {
+        template <typename _Tp>
+        struct __is_empty_aux1: _Tp {
+            double __num;
+        };
+
+        struct __is_empty_aux2 {
+            double __num;
+        };
+
+        template <typename _Tp>
+        struct __is_empty_aux_imp: integral_constant<bool, 
+                sizeof(__is_empty_aux1<_Tp>) == sizeof (__is_empty_aux2)> {};
+
+    } //__is_empty_imp
+
+    template <typename _Tp> 
+    struct is_empty: __is_empty_imp::__is_empty_aux_imp<_Tp> {};
+
+    //c++17
+    template <typename _Tp>
+    constexpr bool is_empty_v = is_empty<_Tp>::value;
 
     //-----------------old type traits(SGI style)-----------------------
     //it is the original effort in SGI STL implementation to using TMP to 
