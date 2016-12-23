@@ -37,6 +37,9 @@ namespace my_stl {
     template <typename _Tp> struct is_object;
     template <typename _Tp> struct is_compound;
 
+    //not in the standard classification
+    template <typename _Tp> struct is_referenceable;
+
     //cv properties and transformation
     template <typename _Tp> struct is_const;
     template <typename _Tp> struct is_volatile;
@@ -46,6 +49,11 @@ namespace my_stl {
     template <typename _Tp> struct add_const;
     template <typename _Tp> struct add_volatile;
     template <typename _Tp> struct add_cv;
+
+    //reference transformation
+    template <typename _Tp> struct remove_reference;
+    template <typename _Tp> struct add_lvalue_reference;
+    template <typename _Tp> struct add_rvalue_reference;
 
     //member introspection, missing quite a few
     template <typename _Tp> struct is_empty;
@@ -588,7 +596,7 @@ namespace my_stl {
     using add_volatile_t = typename add_volatile<_Tp>::type;
 
 
-    //reference traits
+    //reference transformations:
     //----------------remove_reference---------------------------------
     template <typename _Tp> 
     struct remove_reference {
@@ -605,9 +613,71 @@ namespace my_stl {
         typedef _Tp type;
     };
 
-    //c++14, type aliasing allows us to do so
+    //c++14
     template <typename _Tp>
     using remove_reference_t = typename remove_reference<_Tp>::type;
+
+    //---------------is_referencable-----------------------------------
+    //this is a traits not in the standard
+    namespace __is_referenceable_imp {
+        struct _two {
+            char _mem[2];
+        };
+
+        template <typename _Tp> _Tp& __is_referenceable_test(int);
+        template <typename _Tp> _two __is_referenceable_test(...);
+    }
+
+    template <typename _Tp>
+    struct is_referenceable: integral_constant<bool, 
+            sizeof (__is_referenceable_imp::__is_referenceable_test<_Tp>(0))
+                             == sizeof(_Tp&)> {};
+
+    //c++17
+    template <typename _Tp>
+    constexpr bool is_referenceable_t = is_referenceable<_Tp>::value;
+
+    //----------------add_lvalue_reference------------------------------
+    //some value is not referencable, determine it using SFINAE
+    namespace __add_lvalue_reference_imp {
+        template <typename _Tp, bool = is_referenceable_t<_Tp>>
+        struct __add_lvalue_reference_aux {
+            typedef _Tp type;
+        };
+
+        template <typename _Tp>
+        struct __add_lvalue_reference_aux<_Tp, true> {
+            typedef _Tp& type;
+        };
+    }
+
+    template <typename _Tp>
+    struct add_lvalue_reference: 
+        __add_lvalue_reference_imp::__add_lvalue_reference_aux<_Tp> {};
+
+    template <typename _Tp>
+    using add_lvalue_reference_t = typename add_lvalue_reference<_Tp>::type;
+    //----------------add_rvalue_reference------------------------------
+    //some approach
+    namespace __add_rvalue_reference_imp {
+        template <typename _Tp, bool = is_referenceable_t<_Tp>>
+        struct __add_rvalue_reference_aux {
+            typedef _Tp type;
+        };
+
+        template <typename _Tp>
+        struct __add_rvalue_reference_aux<_Tp, true> {
+            typedef _Tp&& type;
+        };
+    }
+
+    template <typename _Tp>
+    struct add_rvalue_reference: 
+        __add_rvalue_reference_imp::__add_rvalue_reference_aux<_Tp> {};
+
+    template <typename _Tp>
+    using add_rvalue_reference_t = typename add_rvalue_reference<_Tp>::type;
+
 
 
     //member introspection, missing quite a few
