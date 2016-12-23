@@ -679,7 +679,6 @@ namespace my_stl {
     using add_rvalue_reference_t = typename add_rvalue_reference<_Tp>::type;
 
 
-
     //member introspection, missing quite a few
     //----------------is_empty-----------------------------------------
     //this implementation assume _Tp is not final

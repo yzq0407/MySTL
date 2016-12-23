@@ -153,3 +153,17 @@ TEST(TypeTraitsTest, TestIsEmpty) {
 }
 
 
+TEST(TypeTraitsTest, TestAddReference) {
+    int x = 5;
+    int& y = x;
+    static_assert(is_same_v<add_lvalue_reference_t<decltype(x)>, int&>, "add reference failed");
+    static_assert(is_same_v<add_lvalue_reference_t<decltype(y)>, int&>, "add reference failed");
+    static_assert(is_same_v<add_lvalue_reference_t<decltype(std::move(y))>, int&>, "add reference failed");
+    static_assert(is_same_v<add_rvalue_reference_t<decltype(x)>, int&&>, "add reference failed");
+    static_assert(is_same_v<add_rvalue_reference_t<decltype(y)>, int&>, "add reference failed");
+    static_assert(is_same_v<add_rvalue_reference_t<decltype(std::move(y))>, int&&>, "add reference failed");
+}
+
+
+
+
