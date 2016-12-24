@@ -68,30 +68,13 @@ namespace my_stl {
         //also, there is one more thing to worry, is that whether two empty class is same
         //if that is the case, we can not inherit from both of them, we have to force one to be composite
         //that gives us five branches (specialization in total)
-
-        template <typename _Tp1, typename _Tp2>
-        struct compressed_pair_base {
-            using type1 = _Tp1;
-            using type2 = _Tp2;
-
-            using reference1 = add_lvalue_reference_t<_Tp1>;
-            using reference2 = add_lvalue_reference_t<_Tp2>;
-
-            using const_reference1 = const reference1;
-            using const_reference2 = const reference2;
-        };
-
         template <typename _Tp1, typename _Tp2, 
-                 bool = is_same_v<remove_cv_t<_Tp1>, remove_cv_t<_Tp2>>,
                  bool = is_class_v<_Tp1> && is_empty_v<_Tp1>,
-                 bool = is_class_v<_Tp1> && is_empty_v<_Tp2>>
+                 bool = is_class_v<_Tp2> && is_empty_v<_Tp2>>
         struct compressed_pair {
             //default set to be two types not empty
-            using first_type = _Tp1;
-            using second_type = _Tp2;
-
-            using first_param_type = remove_reference_t<_Tp1>;
-            using second_param_type = remove_reference_t<_Tp2>;
+            using first_param_type = _Tp1;
+            using second_param_type = _Tp2;
 
             using first_reference = add_lvalue_reference_t<_Tp1>;
             using second_reference = add_lvalue_reference_t<_Tp2>;
@@ -99,16 +82,17 @@ namespace my_stl {
             using first_const_reference = const first_reference;
             using second_const_reference = const second_reference;
 
-            first_type _first;
-            second_type _second;
+            first_param_type _first;
+            second_param_type _second;
 
             compressed_pair() = default;
 
-            compressed_pair(first_param_type _x, second_param_type _y): _first(_x), _second(_y) {}
+            compressed_pair(first_param_type _x = first_param_type(),
+                    second_param_type _y = second_param_type()): _first(_x), _second(_y) {}
 
-            explicit compressed_pair(first_param_type _x): _first(_x), _second() {}
+            /* explicit compressed_pair(first_param_type _x): _first(_x), _second() {} */
 
-            explicit compressed_pair(second_param_type _y): _first(), _second(_y) {}
+            /* explicit compressed_pair(second_param_type _y): _first(), _second(_y) {} */
 
             first_reference first() {
                 return _first;
@@ -128,26 +112,131 @@ namespace my_stl {
         };
         
         //specialization for one empty class
-        template <typename _Tp1, typename _Tp2, bool isSame>
-        struct compressed_pair<_Tp1, _Tp2, isSame, true, false>
-            :compressed_pair_base<_Tp1, _Tp2>{};
-
-        template <typename _Tp1, typename _Tp2, bool isSame>
-        struct compressed_pair<_Tp1, _Tp2, isSame, false, true>
-            :compressed_pair_base<_Tp1, _Tp2>{};
-
-        //specialization for two different empty class
         template <typename _Tp1, typename _Tp2>
-        struct compressed_pair<_Tp1, _Tp2, false, true, true>
-            :compressed_pair_base<_Tp1, _Tp2>{};
+        struct compressed_pair<_Tp1, _Tp2, true, false>: _Tp1{
+            //the first param is an empty class, inherit from it
+            using first_param_type = _Tp1;
+            using second_param_type = _Tp2;
 
-        //do not forget the case of two same empty class
+            using first_reference = add_lvalue_reference_t<_Tp1>;
+            using second_reference = add_lvalue_reference_t<_Tp2>;
+
+            using first_const_reference = const first_reference;
+            using second_const_reference = const second_reference;
+
+            second_param_type _second;
+
+            compressed_pair() = default;
+
+            explicit compressed_pair(second_param_type _y): _second(_y) {};
+
+            constexpr first_reference first() {
+                return static_cast<first_reference>(*this);
+            }
+            
+            constexpr first_const_reference first() const {
+                return static_cast<first_const_reference>(*this);
+            }
+
+            second_reference second() {
+                return _second;
+            }
+
+            second_const_reference second() const {
+                return _second;
+            }
+        };
+
         template <typename _Tp1, typename _Tp2>
-        struct compressed_pair<_Tp1, _Tp2, true, true, true>
-            :compressed_pair_base<_Tp1, _Tp2> {};
+        struct compressed_pair<_Tp1, _Tp2, false, true>: _Tp2{
+            //the first param is an empty class, inherit from it
+            using first_param_type = _Tp1;
+            using second_param_type = _Tp2;
+
+            using first_reference = add_lvalue_reference_t<_Tp1>;
+            using second_reference = add_lvalue_reference_t<_Tp2>;
+
+            using first_const_reference = const first_reference;
+            using second_const_reference = add_const_t<second_reference>;
+
+            first_param_type _first;
+
+            compressed_pair() = default;
+            explicit compressed_pair(first_param_type _y): _first() {};
+
+            first_reference first() {
+                return _first;
+            }
+
+            first_const_reference first() const {
+                return _first;
+            }
+
+            constexpr second_reference second() {
+                return static_cast<second_reference>(*this);
+            }
+
+            constexpr second_const_reference second() const {
+                return static_cast<second_const_reference>(*this);
+            }
+        };
+
+        //one more case left, where two classes are both empty, this is the 
+        //really tricky one, where there are several corner case:
+        //1. these two classes are identical (we can not inherit from same class twice)
+        //2. these two classes is base/derive classes (this create ambiguity when cast back)
+        //The basic idea is to create a wraper class for each type and inherit the 
+        //pair from both wraper classes, and this is the idea used in std::tuple (though it 
+        //has to use recursive TMP to wrap all classes)
+        //note that the boost::compressed_pair does not handle corner case 2 well
+
+        template <typename _Tp, int _ins>
+        struct pair_leaf: remove_cv_t<_Tp> {};
+
+        template <typename _Tp1, typename _Tp2>
+        struct compressed_pair<_Tp1, _Tp2, true, true>: 
+            pair_leaf<_Tp1, 1>, pair_leaf<_Tp2, 2> {
+            //specialization for two different empty class
+            using first_param_type = _Tp1;
+            using second_param_type = _Tp2;
+
+            using first_reference = add_lvalue_reference_t<_Tp1>;
+            using second_reference = add_lvalue_reference_t<_Tp2>;
+
+            using first_const_reference = const first_reference;
+            using second_const_reference = const second_reference;
+            
+            compressed_pair() {}
+
+            constexpr first_reference first() {
+                return static_cast<first_reference>(
+                        static_cast<pair_leaf<_Tp1, 1>&>(*this));
+            }
+            
+            constexpr first_const_reference first() const{
+                return static_cast<first_const_reference>(
+                        static_cast<pair_leaf<_Tp1, 1>&>(*this));
+            }
+
+            constexpr second_reference second() {
+                return static_cast<second_reference>(
+                        static_cast<pair_leaf<_Tp2, 2>&>(*this));
+            }
+            
+            constexpr second_const_reference second() const{
+                return static_cast<second_const_reference>(
+                        static_cast<pair_leaf<_Tp2, 2>&>(*this));
+            }
+        };
 
     }// __compressed_pair_imp
 
+    template <typename _Tp1, typename _Tp2>
+    struct compressed_pair: 
+        __compressed_pair_imp::compressed_pair<_Tp1, _Tp2> {
+            using base =  __compressed_pair_imp::compressed_pair<_Tp1, _Tp2>;
+            using base::base;
+    };
 
     //--------------------------end of compressed_pair----------------------------------
 } //my_stl
