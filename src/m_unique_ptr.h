@@ -12,7 +12,7 @@ namespace my_stl {
     template <typename _Tp> struct default_delete;
     template <typename _Tp> struct default_delete<_Tp[]>;
     template <typename _Tp, typename _Dp> class unique_ptr;
-    template <typename _Tp1, typename _Tp2> class __compressed_pair;
+    template <typename _Tp1, typename _Tp2> struct compressed_pair;
     //-------------------------------end of synopsis-----------------------------------
 
     //--------------------------------default_delete-----------------------------------
@@ -48,14 +48,16 @@ namespace my_stl {
         using deleter_type = _Dp;
 
     private:
-        pointer _ptr;
-        deleter_type _deleter;
+        compressed_pair<pointer, deleter_type> __pair;
 
     public:
         //Default construct, a unique_ptr with nothing
         constexpr unique_ptr() noexcept {}
 
-        explicit unique_ptr(pointer _p) noexcept: _ptr(_p) {
+        explicit constexpr unique_ptr(pointer _p) noexcept: __pair(_p) {}
+
+        ~unique_ptr() {
+            __pair.second()(__pair.first());
         }
     };
     //--------------------------end of unique_ptr---------------------------------------
@@ -69,8 +71,8 @@ namespace my_stl {
         //if that is the case, we can not inherit from both of them, we have to force one to be composite
         //that gives us five branches (specialization in total)
         template <typename _Tp1, typename _Tp2, 
-                 bool = is_class_v<_Tp1> && is_empty_v<_Tp1>,
-                 bool = is_class_v<_Tp2> && is_empty_v<_Tp2>>
+                 bool = is_class<_Tp1>::value && is_empty<_Tp1>::value,
+                 bool = is_class<_Tp2>::value && is_empty<_Tp2>::value>
         struct compressed_pair {
             //default set to be two types not empty
             using first_param_type = _Tp1;
@@ -79,34 +81,34 @@ namespace my_stl {
             using first_reference = add_lvalue_reference_t<_Tp1>;
             using second_reference = add_lvalue_reference_t<_Tp2>;
 
-            using first_const_reference = const first_reference;
-            using second_const_reference = const second_reference;
+            using first_const_reference = add_lvalue_reference_t<add_const_t<_Tp1>>;
+            using second_const_reference = add_lvalue_reference_t<add_const_t<_Tp2>>;
 
             first_param_type _first;
             second_param_type _second;
 
-            compressed_pair() = default;
+            constexpr compressed_pair() = default;
 
-            compressed_pair(first_param_type _x = first_param_type(),
+            explicit constexpr compressed_pair(first_param_type _x = first_param_type(),
                     second_param_type _y = second_param_type()): _first(_x), _second(_y) {}
 
             /* explicit compressed_pair(first_param_type _x): _first(_x), _second() {} */
 
             /* explicit compressed_pair(second_param_type _y): _first(), _second(_y) {} */
 
-            first_reference first() {
+            constexpr first_reference first() {
                 return _first;
             }
             
-            first_const_reference first() const {
+            constexpr first_const_reference first() const {
                 return _first;
             }
 
-            second_reference second() {
+            constexpr second_reference second() {
                 return _second;
             }
 
-            second_const_reference second() const {
+            constexpr second_const_reference second() const {
                 return _second;
             }
         };
@@ -121,12 +123,12 @@ namespace my_stl {
             using first_reference = add_lvalue_reference_t<_Tp1>;
             using second_reference = add_lvalue_reference_t<_Tp2>;
 
-            using first_const_reference = const first_reference;
-            using second_const_reference = const second_reference;
+            using first_const_reference = add_lvalue_reference_t<add_const_t<_Tp1>>;
+            using second_const_reference = add_lvalue_reference_t<add_const_t<_Tp2>>;
 
             second_param_type _second;
 
-            compressed_pair() = default;
+            constexpr compressed_pair() = default;
 
             explicit compressed_pair(second_param_type _y): _second(_y) {};
 
@@ -138,11 +140,11 @@ namespace my_stl {
                 return static_cast<first_const_reference>(*this);
             }
 
-            second_reference second() {
+            constexpr second_reference second() {
                 return _second;
             }
 
-            second_const_reference second() const {
+            constexpr second_const_reference second() const {
                 return _second;
             }
         };
@@ -156,19 +158,19 @@ namespace my_stl {
             using first_reference = add_lvalue_reference_t<_Tp1>;
             using second_reference = add_lvalue_reference_t<_Tp2>;
 
-            using first_const_reference = const first_reference;
-            using second_const_reference = add_const_t<second_reference>;
+            using first_const_reference = add_lvalue_reference_t<add_const_t<_Tp1>>;
+            using second_const_reference = add_lvalue_reference_t<add_const_t<_Tp2>>;
 
             first_param_type _first;
 
-            compressed_pair() = default;
-            explicit compressed_pair(first_param_type _y): _first() {};
+            constexpr compressed_pair() = default;
+            explicit constexpr compressed_pair(first_param_type _x): _first(_x) {};
 
-            first_reference first() {
+            constexpr first_reference first() {
                 return _first;
             }
 
-            first_const_reference first() const {
+            constexpr first_const_reference first() const {
                 return _first;
             }
 
@@ -189,7 +191,7 @@ namespace my_stl {
         //pair from both wraper classes, and this is the idea used in std::tuple (though it 
         //has to use recursive TMP to wrap all classes)
         //note that the boost::compressed_pair does not handle corner case 2 well
-
+        
         template <typename _Tp, int _ins>
         struct pair_leaf: remove_cv_t<_Tp> {};
 
@@ -203,8 +205,8 @@ namespace my_stl {
             using first_reference = add_lvalue_reference_t<_Tp1>;
             using second_reference = add_lvalue_reference_t<_Tp2>;
 
-            using first_const_reference = const first_reference;
-            using second_const_reference = const second_reference;
+            using first_const_reference = add_lvalue_reference_t<add_const_t<_Tp1>>;
+            using second_const_reference = add_lvalue_reference_t<add_const_t<_Tp2>>;
             
             compressed_pair() {}
 
