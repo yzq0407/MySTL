@@ -692,9 +692,13 @@ namespace my_stl {
             double __num;
         };
 
-        template <typename _Tp>
-        struct __is_empty_aux_imp: integral_constant<bool, 
+        //fixed 12/21   non class type need to be add as empty
+        template <typename _Tp, bool = is_class_v<_Tp>>
+        struct __is_empty_aux_imp: integral_constant<bool, is_class_v<_Tp> &&
                 sizeof(__is_empty_aux1<_Tp>) == sizeof (__is_empty_aux2)> {};
+
+        template <typename _Tp>
+        struct __is_empty_aux_imp<_Tp, false>: true_type{};
 
     } //__is_empty_imp
 
