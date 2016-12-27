@@ -44,7 +44,10 @@ namespace my_stl {
     //only takes 8 bytes (64 platform), otherwise, it will be the composite size
     public:
         using pointer = _Tp*;
+        using const_pointer = const _Tp*;
         using element_type = _Tp;
+        using reference = _Tp&;
+        using const_reference = const _Tp&;
         using deleter_type = _Dp;
 
     private:
@@ -52,14 +55,69 @@ namespace my_stl {
 
     public:
         //Default construct, a unique_ptr with nothing
-        constexpr unique_ptr() noexcept {}
+        unique_ptr() noexcept;
 
-        explicit constexpr unique_ptr(pointer _p) noexcept: __pair(_p) {}
+        explicit unique_ptr(pointer _p) noexcept;
+        
+        unique_ptr(pointer _p, deleter_type _d) noexcept;
+
+        unique_ptr(unique_ptr&& _ptr) noexcept;
+
+        unique_ptr(std::nullptr_t) noexcept; 
 
         ~unique_ptr() {
             __pair.second()(__pair.first());
         }
+
+        element_type& operator*() noexcept;
+
+        const element_type& operator*() const noexcept;
+
+        pointer operator->() noexcept;
+
+        const_pointer operator->() const noexcept;
+
     };
+
+    //unique_ptr---------------implementation
+    template <typename _Tp, typename _Dp>
+    unique_ptr<_Tp, _Dp>::unique_ptr() noexcept: __pair(pointer()) {
+        //make sure the delete type is not a function pointer
+        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
+    }
+
+    template <typename _Tp, typename _Dp>
+    unique_ptr<_Tp, _Dp>::unique_ptr(pointer _ptr) noexcept: __pair(_ptr) {
+        //make sure the delete type is not a function pointer
+        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
+    }
+
+    template <typename _Tp, typename _Dp>
+    unique_ptr<_Tp, _Dp>::unique_ptr(std::nullptr_t) noexcept: __pair(pointer()) {
+        //make sure the delete type is not a function pointer
+        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
+    }
+
+    //------------------operator overloading-----------------------------
+    template <typename _Tp, typename _Dp>
+    _Tp& unique_ptr<_Tp, _Dp>::operator*() noexcept {
+        return *__pair.first();
+    }
+    
+    template <typename _Tp, typename _Dp>
+    const _Tp& unique_ptr<_Tp, _Dp>::operator*() const noexcept {
+        return *__pair.first();
+    }
+
+    template <typename _Tp, typename _Dp>
+    _Tp* unique_ptr<_Tp, _Dp>::operator->() noexcept {
+        return __pair.first();
+    }
+
+    template <typename _Tp, typename _Dp>
+    const _Tp* unique_ptr<_Tp, _Dp>::operator->() const noexcept {
+        return __pair.first();
+    }
     //--------------------------end of unique_ptr---------------------------------------
 
     //--------------------------compressed_pair----------------------------------------
