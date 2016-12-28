@@ -54,21 +54,70 @@ namespace my_stl {
         compressed_pair<pointer, deleter_type> __pair;
 
     public:
+        //-------------------CTORS-----------------------
         //Default construct, a unique_ptr with nothing
         unique_ptr() noexcept;
 
+        unique_ptr(std::nullptr_t) noexcept; 
+
+        //construct using a poineter
         explicit unique_ptr(pointer _p) noexcept;
         
-        unique_ptr(pointer _p, deleter_type _d) noexcept;
+        //construct unique_ptr with custom deleter, the rules are:
+        //a) If D is non-reference type A, then the signatures are:
+        //unique_ptr(pointer p, const A& d); (requires that Deleter is nothrow-CopyConstructible)
+        //unique_ptr(pointer p, A&& d); (requires that Deleter is nothrow-MoveConstructible)
+        //b) If D is an lvalue-reference type A&, then the signatures are:
+        //unique_ptr(pointer p, A& d);
+        //unique_ptr(pointer p, A&& d);
+        //c) If D is an lvalue-reference type const A&, then the signatures are:
+        //unique_ptr(pointer p, const A& d);
+        //unique_ptr(pointer p, const A&& d);
+        unique_ptr(pointer _ptr,
+                conditional<is_reference<deleter_type>::value, 
+                deleter_type, 
+                add_lvalue_reference_t<add_const_t<element_type>>> _dl) noexcept;
+
+        unique_ptr(pointer _ptr, 
+                add_rvalue_reference_t<remove_reference_t<element_type>> _dl) noexcept;
 
         unique_ptr(unique_ptr&& _ptr) noexcept;
 
-        unique_ptr(std::nullptr_t) noexcept; 
+        template <typename _Up, typename _Ep>
+        unique_ptr(unique_ptr<_Up, _Ep> _ptr) noexcept;
 
         ~unique_ptr() {
             __pair.second()(__pair.first());
         }
 
+        //move assignment
+        //http://en.cppreference.com/w/cpp/memory/unique_ptr/operator%3D
+        unique_ptr& operator=(unique_ptr&& _ptr);
+        
+        template <typename _Up, typename _Ep>
+        unique_ptr& operator=(unique_ptr<_Up, _Ep> _ptr) noexcept;
+
+        unique_ptr& operator=(std::nullptr_t) noexcept;
+
+        //Modifiers
+        pointer release() noexcept;
+
+        void reset(pointer _ptr = pointer()) noexcept;
+
+        void swap(unique_ptr& other) noexcept;
+
+        //Observers
+        pointer get() noexcept;
+
+        const_pointer get() const noexcept;
+
+        deleter_type& get_deleter() noexcept;
+
+        const deleter_type& get_deleter() const noexcept;
+
+        explicit operator bool() const noexcept;
+
+        //pointer operations
         element_type& operator*() noexcept;
 
         const element_type& operator*() const noexcept;
@@ -76,8 +125,11 @@ namespace my_stl {
         pointer operator->() noexcept;
 
         const_pointer operator->() const noexcept;
-
     };
+
+    //non member function declarations
+    template <typename _Tp, typename... Args>
+    unique_ptr<_Tp> make_unique(Args&&... args);
 
     //unique_ptr---------------implementation
     template <typename _Tp, typename _Dp>
