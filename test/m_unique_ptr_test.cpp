@@ -54,6 +54,9 @@ namespace {
 
     template <typename T>
     int empty_deleter_2<T>::counter = 0;
+    
+    template <typename T>
+    struct nonempty_deleter_1{};
 }
 
 namespace unit_tests {
@@ -139,6 +142,24 @@ namespace unit_tests {
         ASSERT_EQ(pair_4.first()("easy", "hard"), true);
         ASSERT_EQ(pair_4.first()("hard", ""), false);
         ASSERT_EQ(pair_4.first()("easy", "easy"), false);
+
+        //test one of the argument is lambda
+        const std::string capture = "now, please capture me if you can";
+        auto lambda_1 = [] (const std::string& a, const std::string& b) -> std::string {
+            return a + b;};
+        auto lambda_2 = [&] (int idx) -> char {return capture[idx];};
+        static_assert(sizeof lambda_1 == 1, "lambda object size failure");
+        static_assert(sizeof lambda_2 == sizeof(void *), "lambda object size failure");
+        
+        const compressed_pair<decltype(lambda_1), std::string> pair_5(lambda_1, "hello world");
+        const compressed_pair<std::string, decltype(lambda_1)> pair_6("hello world", lambda_1);
+        ASSERT_EQ(pair_5.first()("easy", "hard"), "easyhard");
+        ASSERT_EQ(pair_6.second()("easy", "hard"), "easyhard");
+
+        const compressed_pair<decltype(lambda_1), decltype(lambda_2)>
+            pair_7(lambda_1, lambda_2);
+        ASSERT_EQ(pair_7.first()("easy", "hard"), "easyhard");
+        ASSERT_EQ(pair_7.second()(10), 'e');
     }
 
     TEST(UniquePtrTest, TestCompressedPair3) {
@@ -163,6 +184,21 @@ namespace unit_tests {
         compressed_pair<base, derive> pair_3;
         static_assert(pair_3.first()(10, 1) == 101, "failed on both empty compressed pair");
         static_assert(pair_3.second()(10, 1) == 51, "failed on both empty compressed pair");
+
+        //lambda
+        auto lambda_1 = [] (const std::string& a, const std::string& b) -> std::string {
+            return a + b;};
+        auto lambda_2 = [] (int a) -> int {return 10 * a % 2;};
+        static_assert(sizeof lambda_1 == 1, "failed on empty lambda object");
+        static_assert(sizeof lambda_2 == 1, "failed on empty lambda object");
+        compressed_pair<std::less<int>, decltype(lambda_1)> pair_4(std::less<int>(), lambda_1);
+        compressed_pair<decltype(lambda_1), decltype(lambda_2)> pair_5(lambda_1, lambda_2);
+        static_assert(sizeof pair_4 == 1, "failed on both empty compressed pair");
+        static_assert(sizeof pair_5 == 1, "failed on both empty compressed pair");
+        ASSERT_EQ(pair_4.first()(5, 3), false);
+        ASSERT_EQ(pair_4.second()("hello", "world"), "helloworld");
+        ASSERT_EQ(pair_5.first()("hello", "world"), "helloworld");
+        ASSERT_EQ(pair_5.second()(10), 0); 
     }
 
     TEST(UniquePtrTest, TestBasicConstruction) {
@@ -187,24 +223,36 @@ namespace unit_tests {
         ASSERT_EQ(*s_up_heap == *m_up_heap, true);
     }
 
-    TEST(UniquePtrTest, TestPlainTypeDeleterConstruction) {
-        //construct a unique_ptr<_Tp, _Dp> with custome _Dp with plain type (not reference)
-        using std::string;
-        std::unique_ptr<int, empty_deleter_1<int>> s_upi(new int(5), empty_deleter_1<int>());
-        my_stl::unique_ptr<int, empty_deleter_1<int>> m_upi(new int(5), empty_deleter_1<int>());
-        static_assert(sizeof s_upi == sizeof m_upi, "plain deleter construction failed");
-
-        std::unique_ptr<string, empty_deleter_1<string>> s_up_str(new string("basic string!"), empty_deleter_1<string>());
-        my_stl::unique_ptr<string, empty_deleter_1<string>> m_up_str(new string("basic string!"), empty_deleter_1<string>());
-        static_assert(sizeof s_up_str == sizeof m_up_str, "plain deleter construction failed");
+    template <typename T>
+    void testPlainTypeDeleterConstructionTemplate(const T& value) {
+        //test construction using all the empty deleters
+        std::unique_ptr<T, empty_deleter_1<T>> s_up(new T(value), empty_deleter_1<T>());
+        my_stl::unique_ptr<T, empty_deleter_1<T>> m_up(new T(value), empty_deleter_1<T>());
+        static_assert(sizeof s_up == sizeof m_up, "plain deleter construction failed");
 
         for (int count = 0; count <= 100; ++count) {
-            std::unique_ptr<int, empty_deleter_2<int>> s_upi(new int(count), 
-                    empty_deleter_2<int>());
-            my_stl::unique_ptr<int, empty_deleter_2<int>> m_upi(new int(count),
-                    empty_deleter_2<int>());
-            ASSERT_EQ(*s_upi, *m_upi);
-            ASSERT_EQ(2 * count, empty_deleter_2<int>::counter);
+            std::unique_ptr<T, empty_deleter_2<T>> s_up(new T(value), 
+                    empty_deleter_2<T>());
+            my_stl::unique_ptr<T, empty_deleter_2<T>> m_up(new T(value),
+                    empty_deleter_2<T>());
+            ASSERT_EQ(*s_up, *m_up);
+            ASSERT_EQ(2 * count, empty_deleter_2<T>::counter);
         }
+
+        //test with a lambda function deleter
+        auto lambda_deleter = [](T* ptr) {delete ptr;};
+        std::unique_ptr<T, decltype(lambda_deleter)> s_up_lamb_del(new T(value), lambda_deleter);
+        my_stl::unique_ptr<T, decltype(lambda_deleter)> m_up_lamb_del(new T(value), lambda_deleter);
+        static_assert(sizeof s_up_lamb_del == sizeof m_up_lamb_del, 
+                "plain deleter construction failed"); 
+        ASSERT_EQ(*s_up_lamb_del == *m_up_lamb_del, true);
+    }
+
+    TEST(UniquePtrTest, TestPlainTypeDeleterConstruction) {
+        testPlainTypeDeleterConstructionTemplate<int>(15);
+        testPlainTypeDeleterConstructionTemplate<Test_FOO_Simple>(Test_FOO_Simple(-10000));
+        testPlainTypeDeleterConstructionTemplate<Test_FOO_Array>(Test_FOO_Array(210793));
+        testPlainTypeDeleterConstructionTemplate<Test_FOO_Heap>(Test_FOO_Heap(0));
+        testPlainTypeDeleterConstructionTemplate<std::string>("test constructions!");
     }
 }// unit test
