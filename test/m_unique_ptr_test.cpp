@@ -56,7 +56,17 @@ namespace {
     int empty_deleter_2<T>::counter = 0;
     
     template <typename T>
-    struct nonempty_deleter_1{};
+    struct nonempty_deleter_1{
+        int count = 0;
+        void operator()(T* pointer) {
+            delete pointer;
+            ++count;
+        }
+
+        int getCount() {
+            return count;
+        }
+    };
 }
 
 namespace unit_tests {
@@ -246,6 +256,9 @@ namespace unit_tests {
         static_assert(sizeof s_up_lamb_del == sizeof m_up_lamb_del, 
                 "plain deleter construction failed"); 
         ASSERT_EQ(*s_up_lamb_del == *m_up_lamb_del, true);
+        
+        //test with non
+        
     }
 
     TEST(UniquePtrTest, TestPlainTypeDeleterConstruction) {
@@ -254,5 +267,30 @@ namespace unit_tests {
         testPlainTypeDeleterConstructionTemplate<Test_FOO_Array>(Test_FOO_Array(210793));
         testPlainTypeDeleterConstructionTemplate<Test_FOO_Heap>(Test_FOO_Heap(0));
         testPlainTypeDeleterConstructionTemplate<std::string>("test constructions!");
+    }
+
+    template <typename T>
+    void testReferenceTypeDeleterConstructionTemplate(const T& value) {
+        empty_deleter_1<T> deleter1;
+        empty_deleter_2<T> deleter2;
+        std::unique_ptr<T, empty_deleter_1<T>&> s_up_1(new T(value), deleter1);
+        my_stl::unique_ptr<T, empty_deleter_1<T>&> m_up_1(new T(value), deleter1);
+        static_assert(sizeof s_up_1 == sizeof m_up_1, 
+                "failed on reference type deleter construction");
+        ASSERT_EQ(*s_up_1 == *m_up_1, true);
+
+        for (int i = 0; i <= 100; ++i) {
+            std::unique_ptr<T, empty_deleter_2<T>&> s_up_2(new T(value), deleter2);
+            my_stl::unique_ptr<T, empty_deleter_2<T>&> m_up_1(new T(value), deleter2);
+            ASSERT_EQ(2 * i + 202, deleter2.counter);
+        }
+    }
+
+    TEST(UniquePtrTest, TestReferenceTypeDeleterConstruction) {
+        testReferenceTypeDeleterConstructionTemplate<int>(15);
+        testReferenceTypeDeleterConstructionTemplate<Test_FOO_Simple>(Test_FOO_Simple(-10000));
+        testReferenceTypeDeleterConstructionTemplate<Test_FOO_Array>(Test_FOO_Array(210793));
+        testReferenceTypeDeleterConstructionTemplate<Test_FOO_Heap>(Test_FOO_Heap(0));
+        testReferenceTypeDeleterConstructionTemplate<std::string>("test constructions!");
     }
 }// unit test

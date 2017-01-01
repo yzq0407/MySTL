@@ -7,6 +7,8 @@
 #define __MY_STL_UNIQUE_PTR_H
 
 #include "m_type_traits.h"
+#include <utility>
+
 namespace my_stl {
     //-----------------------------------synopsis--------------------------------------
     template <typename _Tp> struct default_delete;
@@ -74,9 +76,9 @@ namespace my_stl {
         //unique_ptr(pointer p, const A& d);
         //unique_ptr(pointer p, const A&& d);
         unique_ptr(pointer _ptr,
-                conditional<is_reference<deleter_type>::value, 
+                typename conditional<is_reference<deleter_type>::value, 
                 deleter_type, 
-                add_lvalue_reference_t<add_const_t<element_type>>> _dl) noexcept;
+                add_lvalue_reference_t<add_const_t<deleter_type>>>::type _dl) noexcept;
 
         unique_ptr(pointer _ptr, 
                 add_rvalue_reference_t<remove_reference_t<element_type>> _dl) noexcept;
@@ -132,8 +134,18 @@ namespace my_stl {
     unique_ptr<_Tp> make_unique(Args&&... args);
 
     //unique_ptr---------------implementation
+
+    //---------------------------------------------------------------------------
+    //-------------------------Ctors---------------------------------------------
+    //---------------------------------------------------------------------------
     template <typename _Tp, typename _Dp>
     unique_ptr<_Tp, _Dp>::unique_ptr() noexcept: __pair(pointer()) {
+        //make sure the delete type is not a function pointer
+        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
+    }
+
+    template <typename _Tp, typename _Dp>
+    unique_ptr<_Tp, _Dp>::unique_ptr(std::nullptr_t) noexcept: __pair(pointer()) {
         //make sure the delete type is not a function pointer
         static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
     }
@@ -145,12 +157,29 @@ namespace my_stl {
     }
 
     template <typename _Tp, typename _Dp>
-    unique_ptr<_Tp, _Dp>::unique_ptr(std::nullptr_t) noexcept: __pair(pointer()) {
+    unique_ptr<_Tp, _Dp>::unique_ptr(pointer _ptr,
+        typename conditional<is_reference<deleter_type>::value, 
+        deleter_type, 
+        add_lvalue_reference_t<add_const_t<deleter_type>>>::type _dl) noexcept
+    : __pair(_ptr, _dl) {
         //make sure the delete type is not a function pointer
         static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
     }
 
-    //------------------operator overloading-----------------------------
+    template <typename _Tp, typename _Dp>
+    unique_ptr<_Tp, _Dp>::unique_ptr(pointer _ptr,
+            add_rvalue_reference_t<remove_reference_t<element_type>> _dl) noexcept
+    : __pair(_ptr, std::move(_dl)) {
+        //make sure the delete type is not a function pointer
+        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
+    }
+    //****************************************************************************
+    //-------------------------End of Ctors---------------------------------------
+    //****************************************************************************
+
+    //---------------------------------------------------------------------------
+    //--------------------------operator overloading-----------------------------
+    //---------------------------------------------------------------------------
     template <typename _Tp, typename _Dp>
     _Tp& unique_ptr<_Tp, _Dp>::operator*() noexcept {
         return *__pair.first();
@@ -240,7 +269,12 @@ namespace my_stl {
 
             constexpr compressed_pair() = default;
 
-            explicit compressed_pair(second_param_type _y): _second(_y) {};
+            explicit compressed_pair(second_param_type _y): _second(_y) {}
+
+            //note that a lambda doesn't have a default constructor, we need to 
+            //copy construct the base
+            compressed_pair(first_param_type _x, second_param_type _y): 
+                first_param_type(_x), _second(_y) {}
 
             constexpr first_reference first() {
                 return static_cast<first_reference>(*this);
@@ -273,8 +307,12 @@ namespace my_stl {
 
             first_param_type _first;
 
-            constexpr compressed_pair() = default;
+            constexpr compressed_pair(): _first() {};
             explicit constexpr compressed_pair(first_param_type _x): _first(_x) {};
+
+            constexpr compressed_pair(first_param_type _x,
+                    second_param_type _y): _Tp2(_y), 
+                                           _first(_x) {};
 
             constexpr first_reference first() {
                 return _first;
@@ -303,7 +341,12 @@ namespace my_stl {
         //note that the boost::compressed_pair does not handle corner case 2 well
         
         template <typename _Tp, int _ins>
-        struct pair_leaf: remove_cv_t<_Tp> {};
+        struct pair_leaf: remove_cv_t<_Tp> {
+            using base = remove_cv_t<_Tp>;
+            pair_leaf(): base() {}
+
+            pair_leaf(_Tp _x): base(_x) {}
+        };
 
         template <typename _Tp1, typename _Tp2>
         struct compressed_pair<_Tp1, _Tp2, true, true>: 
@@ -318,7 +361,10 @@ namespace my_stl {
             using first_const_reference = add_lvalue_reference_t<add_const_t<_Tp1>>;
             using second_const_reference = add_lvalue_reference_t<add_const_t<_Tp2>>;
             
-            compressed_pair() {}
+            explicit compressed_pair(first_param_type _x = _Tp1(), 
+                    second_param_type _y = _Tp2()):
+                pair_leaf<_Tp1, 1>(_x),
+                pair_leaf<_Tp2, 2>(_y) {}
 
             constexpr first_reference first() {
                 return static_cast<first_reference>(
