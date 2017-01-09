@@ -364,6 +364,4 @@ namespace my_stl {
         return start;
     }
 }
-
-
 #endif

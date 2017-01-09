@@ -199,6 +199,21 @@ namespace my_stl {
     const _Tp* unique_ptr<_Tp, _Dp>::operator->() const noexcept {
         return __pair.first();
     }
+
+    //Observers
+
+    template <typename _Tp, typename _Dp>
+    typename unique_ptr<_Tp, _Dp>::deleter_type& 
+    unique_ptr<_Tp, _Dp>::get_deleter() noexcept  {
+        return __pair.second();
+    }
+
+    template <typename _Tp, typename _Dp>
+    const typename unique_ptr<_Tp, _Dp>::deleter_type& 
+    unique_ptr<_Tp, _Dp>::get_deleter() const noexcept {
+        return __pair.second();
+    }
+
     //--------------------------end of unique_ptr---------------------------------------
 
     //--------------------------compressed_pair----------------------------------------
@@ -370,7 +385,7 @@ namespace my_stl {
                 return static_cast<first_reference>(
                         static_cast<pair_leaf<_Tp1, 1>&>(*this));
             }
-            
+
             constexpr first_const_reference first() const{
                 return static_cast<first_const_reference>(
                         static_cast<pair_leaf<_Tp1, 1>&>(*this));

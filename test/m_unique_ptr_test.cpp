@@ -52,6 +52,7 @@ namespace {
         }
     };
 
+
     template <typename T>
     int empty_deleter_2<T>::counter = 0;
     
@@ -65,6 +66,20 @@ namespace {
 
         int getCount() {
             return count;
+        }
+    };
+
+    struct nonempty_deleter_2 {
+        bool is_last_int = false;
+
+        template <typename T>
+        void operator()(T* pointer) {
+            if (my_stl::is_integral_v<T>) {
+                is_last_int = true;
+            }
+            else {
+                is_last_int = false;
+            }
         }
     };
 }
@@ -257,8 +272,15 @@ namespace unit_tests {
                 "plain deleter construction failed"); 
         ASSERT_EQ(*s_up_lamb_del == *m_up_lamb_del, true);
         
-        //test with non
-        
+        //test with nonempty deleter
+        nonempty_deleter_1<T> nemp_del;
+        for (int count =0; count <= 10; ++count) {
+            std::unique_ptr<T, nonempty_deleter_1<T>> s_up_nonemp1(new T(value), nemp_del);
+            my_stl::unique_ptr<T, nonempty_deleter_1<T>> m_up_nonemp1(new T(value), nemp_del);
+            ASSERT_EQ(s_up_nonemp1.get_deleter().getCount(), 0);
+            ASSERT_EQ(m_up_nonemp1.get_deleter().getCount(), 0);
+        }
+        ASSERT_EQ(nemp_del.getCount(), 0);
     }
 
     TEST(UniquePtrTest, TestPlainTypeDeleterConstruction) {
@@ -273,21 +295,37 @@ namespace unit_tests {
     void testReferenceTypeDeleterConstructionTemplate(const T& value) {
         empty_deleter_1<T> deleter1;
         empty_deleter_2<T> deleter2;
+        nonempty_deleter_1<T> deleter3;
         std::unique_ptr<T, empty_deleter_1<T>&> s_up_1(new T(value), deleter1);
         my_stl::unique_ptr<T, empty_deleter_1<T>&> m_up_1(new T(value), deleter1);
         static_assert(sizeof s_up_1 == sizeof m_up_1, 
                 "failed on reference type deleter construction");
         ASSERT_EQ(*s_up_1 == *m_up_1, true);
 
+        const int base_counter = deleter2.counter;
         for (int i = 0; i <= 100; ++i) {
             std::unique_ptr<T, empty_deleter_2<T>&> s_up_2(new T(value), deleter2);
-            my_stl::unique_ptr<T, empty_deleter_2<T>&> m_up_1(new T(value), deleter2);
-            ASSERT_EQ(2 * i + 202, deleter2.counter);
+            my_stl::unique_ptr<T, empty_deleter_2<T>&> m_up_2(new T(value), deleter2);
+            ASSERT_EQ(2 * i + base_counter, deleter2.counter);
         }
+
+        for (int i = 0; i <= 100; ++i) {
+            std::unique_ptr<T, nonempty_deleter_1<T>&> s_up_3(new T(value), deleter3);
+            my_stl::unique_ptr<T, nonempty_deleter_1<T>&> m_up_3(new T(value), deleter3);
+            ASSERT_EQ(2 * i, deleter3.getCount());
+            ASSERT_EQ(2 * i, s_up_3.get_deleter().getCount());
+            ASSERT_EQ(2 * i, m_up_3.get_deleter().getCount());
+        }
+        nonempty_deleter_2 deleter4;
+        {
+            my_stl::unique_ptr<T, nonempty_deleter_2&> m_up_4(new T(value), deleter4);
+        }
+        ASSERT_EQ(deleter4.is_last_int, my_stl::is_integral_v<T>);
     }
 
     TEST(UniquePtrTest, TestReferenceTypeDeleterConstruction) {
         testReferenceTypeDeleterConstructionTemplate<int>(15);
+        testReferenceTypeDeleterConstructionTemplate<char>('a');
         testReferenceTypeDeleterConstructionTemplate<Test_FOO_Simple>(Test_FOO_Simple(-10000));
         testReferenceTypeDeleterConstructionTemplate<Test_FOO_Array>(Test_FOO_Array(210793));
         testReferenceTypeDeleterConstructionTemplate<Test_FOO_Heap>(Test_FOO_Heap(0));
