@@ -58,9 +58,9 @@ namespace my_stl {
     public:
         //-------------------CTORS-----------------------
         //Default construct, a unique_ptr with nothing
-        unique_ptr() noexcept;
+        constexpr unique_ptr() noexcept;
 
-        unique_ptr(std::nullptr_t) noexcept; 
+        constexpr unique_ptr(std::nullptr_t) noexcept; 
 
         //construct using a poineter
         explicit unique_ptr(pointer _p) noexcept;
@@ -86,7 +86,7 @@ namespace my_stl {
         unique_ptr(unique_ptr&& _ptr) noexcept;
 
         template <typename _Up, typename _Ep>
-        unique_ptr(unique_ptr<_Up, _Ep> _ptr) noexcept;
+        unique_ptr(unique_ptr<_Up, _Ep>&& _ptr) noexcept;
 
         ~unique_ptr() {
             __pair.second()(__pair.first());
@@ -139,21 +139,21 @@ namespace my_stl {
     //-------------------------Ctors---------------------------------------------
     //---------------------------------------------------------------------------
     template <typename _Tp, typename _Dp>
-    unique_ptr<_Tp, _Dp>::unique_ptr() noexcept: __pair(pointer()) {
-        //make sure the delete type is not a function pointer
-        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
+    constexpr unique_ptr<_Tp, _Dp>::unique_ptr() noexcept: __pair(pointer()) {
+        //if the deleter is a function pointer, it can not be null
+        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr with null function pointer");
     }
 
     template <typename _Tp, typename _Dp>
-    unique_ptr<_Tp, _Dp>::unique_ptr(std::nullptr_t) noexcept: __pair(pointer()) {
+    constexpr unique_ptr<_Tp, _Dp>::unique_ptr(std::nullptr_t) noexcept: __pair(pointer()) {
         //make sure the delete type is not a function pointer
-        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
+        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr with null function pointer");
     }
 
     template <typename _Tp, typename _Dp>
     unique_ptr<_Tp, _Dp>::unique_ptr(pointer _ptr) noexcept: __pair(_ptr) {
         //make sure the delete type is not a function pointer
-        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
+        static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr with null function pointer");
     }
 
     template <typename _Tp, typename _Dp>
@@ -173,6 +173,11 @@ namespace my_stl {
         //make sure the delete type is not a function pointer
         static_assert(!is_pointer_v<_Dp>, "cannot construct unique_ptr using function delete type");
     }
+
+    template <typename _Tp, typename _Dp>
+    unique_ptr<_Tp, _Dp>::unique_ptr(unique_ptr&& _ptr) noexcept:
+        __pair(_ptr.release(), _ptr.get_deleter()) {
+        }
     //****************************************************************************
     //-------------------------End of Ctors---------------------------------------
     //****************************************************************************
@@ -180,6 +185,14 @@ namespace my_stl {
     //---------------------------------------------------------------------------
     //--------------------------operator overloading-----------------------------
     //---------------------------------------------------------------------------
+    //copy assignment
+    template <typename _Tp, typename _Dp>
+    unique_ptr<_Tp, _Dp>& unique_ptr<_Tp, _Dp>::operator=(unique_ptr<_Tp, _Dp>&& _rhs){
+        reset(_rhs.release());
+        __pair.second = _rhs.get_deleter();
+        return *this;
+    }
+
     template <typename _Tp, typename _Dp>
     _Tp& unique_ptr<_Tp, _Dp>::operator*() noexcept {
         return *__pair.first();
@@ -198,6 +211,26 @@ namespace my_stl {
     template <typename _Tp, typename _Dp>
     const _Tp* unique_ptr<_Tp, _Dp>::operator->() const noexcept {
         return __pair.first();
+    }
+
+    //Modifiers
+    template <typename _Tp, typename _Dp>
+    typename unique_ptr<_Tp, _Dp>::pointer 
+    unique_ptr<_Tp, _Dp>::release() noexcept {
+        pointer _ptr = __pair.first();
+        __pair.first() = nullptr;
+        return _ptr;
+    }
+
+    template <typename _Tp, typename _Dp>
+    void unique_ptr<_Tp, _Dp>::reset(pointer _ptr) noexcept {
+        __pair.second()(__pair.first());
+        __pair.first() = _ptr;
+    }
+
+    template <typename _Tp, typename _Dp>
+    void unique_ptr<_Tp, _Dp>::swap(unique_ptr& _ptr) noexcept {
+        __pair.swap(_ptr.__pair);
     }
 
     //Observers
@@ -265,6 +298,12 @@ namespace my_stl {
             constexpr second_const_reference second() const {
                 return _second;
             }
+
+            void swap(compressed_pair& _pair2) noexcept {
+                using std::swap;
+                swap(_first, _pair2.first);
+                swap(_second, _pair2.second);
+            }
         };
         
         //specialization for one empty class
@@ -306,6 +345,11 @@ namespace my_stl {
             constexpr second_const_reference second() const {
                 return _second;
             }
+
+            void swap(compressed_pair& _pair2) noexcept {
+                using std::swap;
+                swap(_second, _pair2.second);
+            }
         };
 
         template <typename _Tp1, typename _Tp2>
@@ -343,6 +387,11 @@ namespace my_stl {
 
             constexpr second_const_reference second() const {
                 return static_cast<second_const_reference>(*this);
+            }
+
+            void swap(compressed_pair& _pair) noexcept {
+                using std::swap;
+                swap(_first, _pair._first);
             }
         };
 
@@ -399,6 +448,9 @@ namespace my_stl {
             constexpr second_const_reference second() const{
                 return static_cast<second_const_reference>(
                         static_cast<pair_leaf<_Tp2, 2>&>(*this));
+            }
+
+            void swap(compressed_pair& _pair) noexcept {
             }
         };
 

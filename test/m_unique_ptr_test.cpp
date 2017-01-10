@@ -74,6 +74,7 @@ namespace {
 
         template <typename T>
         void operator()(T* pointer) {
+            delete pointer;
             if (my_stl::is_integral_v<T>) {
                 is_last_int = true;
             }
@@ -331,4 +332,63 @@ namespace unit_tests {
         testReferenceTypeDeleterConstructionTemplate<Test_FOO_Heap>(Test_FOO_Heap(0));
         testReferenceTypeDeleterConstructionTemplate<std::string>("test constructions!");
     }
+
+    template <typename T>
+    void testResetAndReleaseTemplate(const T& value1, const T& value2) {
+        using up_emp1 = my_stl::unique_ptr<T, empty_deleter_1<T>>;
+        using up_emp2 = my_stl::unique_ptr<T, empty_deleter_2<T>>;
+        using up_nemp1 = my_stl::unique_ptr<T, nonempty_deleter_1<T>&>;
+        using up_nemp2 = my_stl::unique_ptr<T, nonempty_deleter_1<T>>;
+
+        T* pointer_value = nullptr;
+        {
+            up_emp1 uptr(new T(value1));
+            uptr.reset(new T(value2));
+            ASSERT_EQ(*uptr == value2, true);
+            pointer_value = uptr.release();
+        }
+        ASSERT_EQ(value2 == *pointer_value, true);
+
+        int base = empty_deleter_2<T>::getCount();
+        {
+            up_emp2 uptr(new T(value1));
+            uptr.reset(new T(value2));
+            ASSERT_EQ(*uptr == value2, true);
+            pointer_value = uptr.release();
+        }
+        ASSERT_EQ(value2 == *pointer_value, true);
+        ASSERT_EQ(empty_deleter_2<T>::getCount(), base + 2);
+
+        nonempty_deleter_1<T> deleter_nonempty;
+        {
+            up_nemp1 uptr(new T(value2), deleter_nonempty);
+            ASSERT_EQ(*uptr == value2, true);
+            uptr.reset(new T(value1));
+            ASSERT_EQ(*uptr == value1, true);
+            pointer_value = uptr.release();
+        }
+        ASSERT_EQ(value1 == *pointer_value, true);
+        ASSERT_EQ(deleter_nonempty.getCount(), 2);
+
+        {
+            up_nemp2 uptr(new T(value2), nonempty_deleter_1<T>());
+            ASSERT_EQ(*uptr == value2, true);
+            uptr.reset(new T(value1));
+            ASSERT_EQ(*uptr == value1, true);
+            pointer_value = uptr.release();
+            ASSERT_EQ(uptr.get_deleter().getCount(), 1);
+        }
+        ASSERT_EQ(value1 == *pointer_value, true);
+    }
+
+    TEST(UniquePtrTest, TestResetAndRelease) {
+        /* testResetAndReleaseTemplate<int>(5, -10); */
+        /* testResetAndReleaseTemplate<char>('a', 'b'); */
+        /* testResetAndReleaseTemplate<std::string>("hello", "world world world"); */
+        /* testResetAndReleaseTemplate<Test_FOO_Simple>(Test_FOO_Simple(18), Test_FOO_Simple(11)); */
+        /* testResetAndReleaseTemplate<Test_FOO_Array>(Test_FOO_Array(10), Test_FOO_Array(12)); */
+        /* testResetAndReleaseTemplate<Test_FOO_Heap>(Test_FOO_Heap(3), Test_FOO_Heap(9)); */
+    }
+
+
 }// unit test
