@@ -92,12 +92,17 @@ namespace my_stl {
             __pair.second()(__pair.first());
         }
 
+        //no copy is allowed
+        unique_ptr(const unique_ptr& _ptr) = delete;
+        
+        unique_ptr& operator=(const unique_ptr& _ptr) = delete;
+
         //move assignment
         //http://en.cppreference.com/w/cpp/memory/unique_ptr/operator%3D
-        unique_ptr& operator=(unique_ptr&& _ptr);
+        unique_ptr& operator=(unique_ptr&& _ptr) noexcept;
         
         template <typename _Up, typename _Ep>
-        unique_ptr& operator=(unique_ptr<_Up, _Ep> _ptr) noexcept;
+        unique_ptr& operator=(unique_ptr<_Up, _Ep>&& _ptr) noexcept;
 
         unique_ptr& operator=(std::nullptr_t) noexcept;
 
@@ -187,8 +192,14 @@ namespace my_stl {
 
     template <typename _Tp, typename _Dp>
     unique_ptr<_Tp, _Dp>::unique_ptr(unique_ptr&& _ptr) noexcept:
-        __pair(_ptr.release(), _ptr.get_deleter()) {
+        __pair(_ptr.release(), std::move(_ptr.get_deleter())) {
         }
+
+    template <typename _Tp, typename _Dp>
+    template <typename _Up, typename _Ep>
+    unique_ptr<_Tp, _Dp>::unique_ptr(unique_ptr<_Up, _Ep>&& _ptr) noexcept:
+    __pair(_ptr.release(), std::move(_ptr.get_deleter())) {
+    }
     //****************************************************************************
     //-------------------------End of Ctors---------------------------------------
     //****************************************************************************
@@ -198,9 +209,17 @@ namespace my_stl {
     //---------------------------------------------------------------------------
     //copy assignment
     template <typename _Tp, typename _Dp>
-    unique_ptr<_Tp, _Dp>& unique_ptr<_Tp, _Dp>::operator=(unique_ptr<_Tp, _Dp>&& _rhs){
+    unique_ptr<_Tp, _Dp>& unique_ptr<_Tp, _Dp>::operator=(unique_ptr&& _rhs) noexcept{
         reset(_rhs.release());
-        __pair.second = _rhs.get_deleter();
+        __pair.second() = std::move(_rhs.get_deleter());
+        return *this;
+    }
+
+    template <typename _Tp, typename _Dp>
+    template <typename _Up, typename _Ep>
+    unique_ptr<_Tp, _Dp>& unique_ptr<_Tp, _Dp>::operator=(unique_ptr<_Up, _Ep>&& _rhs) noexcept{
+        reset(_rhs.release());
+        __pair.second() = std::move(_rhs.get_deleter());
         return *this;
     }
 

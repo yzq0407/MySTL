@@ -396,5 +396,24 @@ namespace unit_tests {
         testResetAndReleaseTemplate<Test_FOO_Heap>(Test_FOO_Heap(3), Test_FOO_Heap(9));
     }
 
+    TEST(UniquePtrTest, TestMakeUnique) {
+        auto uptr_int = my_stl::make_unique<int> (5);
+        static_assert(my_stl::is_same_v<decltype(uptr_int), my_stl::unique_ptr<int>>, 
+                "failed on make unique");
+        ASSERT_EQ(*uptr_int, 5);
+
+        auto uptr_str = my_stl::make_unique<std::string>(5, 'a');
+        static_assert(my_stl::is_same_v<decltype(uptr_str), my_stl::unique_ptr<std::string>>, 
+                "failed on make unique");
+        ASSERT_EQ(*uptr_str, "aaaaa");
+
+        std::string hello_world_str = "hello world";
+        uptr_str = my_stl::make_unique<std::string>(hello_world_str);
+        ASSERT_EQ(*uptr_str == hello_world_str, true);
+        
+        uptr_str = my_stl::make_unique<std::string>(std::move(hello_world_str));
+        ASSERT_EQ(*uptr_str == "hello world", true);
+        ASSERT_EQ(uptr_str->size(), 11);
+    }
 
 }// unit test
