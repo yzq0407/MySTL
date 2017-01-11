@@ -635,12 +635,12 @@ namespace my_stl {
 
     //c++17
     template <typename _Tp>
-    constexpr bool is_referenceable_t = is_referenceable<_Tp>::value;
+    constexpr bool is_referenceable_v = is_referenceable<_Tp>::value;
 
     //----------------add_lvalue_reference------------------------------
     //some value is not referencable, determine it using SFINAE
     namespace __add_lvalue_reference_imp {
-        template <typename _Tp, bool = is_referenceable_t<_Tp>>
+        template <typename _Tp, bool = is_referenceable<_Tp>::value>
         struct __add_lvalue_reference_aux {
             typedef _Tp type;
         };
@@ -660,7 +660,7 @@ namespace my_stl {
     //----------------add_rvalue_reference------------------------------
     //some approach
     namespace __add_rvalue_reference_imp {
-        template <typename _Tp, bool = is_referenceable_t<_Tp>>
+        template <typename _Tp, bool = is_referenceable<_Tp>::value>
         struct __add_rvalue_reference_aux {
             typedef _Tp type;
         };
@@ -692,9 +692,13 @@ namespace my_stl {
             double __num;
         };
 
-        template <typename _Tp>
-        struct __is_empty_aux_imp: integral_constant<bool, 
+        //fixed 12/21   non class type need to be add as empty
+        template <typename _Tp, bool = is_class<_Tp>::value>
+        struct __is_empty_aux_imp: integral_constant<bool, is_class<_Tp>::value &&
                 sizeof(__is_empty_aux1<_Tp>) == sizeof (__is_empty_aux2)> {};
+
+        template <typename _Tp>
+        struct __is_empty_aux_imp<_Tp, false>: true_type{};
 
     } //__is_empty_imp
 
@@ -841,9 +845,6 @@ namespace my_stl {
         typedef __true_type has_trivial_dtor;
         typedef __true_type is_POD_type;
     };
-
-
-
 }
 
 #endif
