@@ -34,7 +34,7 @@ namespace {
     struct empty_deleter_1 {
         //same as the default deleter
         void operator()(T* pointer) {
-            delete(pointer);
+            delete pointer;
         }
     };
 
@@ -43,7 +43,7 @@ namespace {
         //add a counter
         static int counter;
         void operator()(T* pointer) {
-            delete(pointer);
+            delete pointer;
             ++counter;
         }
 
@@ -343,21 +343,25 @@ namespace unit_tests {
         T* pointer_value = nullptr;
         {
             up_emp1 uptr(new T(value1));
+            ASSERT_EQ(*uptr == value1, true);
             uptr.reset(new T(value2));
             ASSERT_EQ(*uptr == value2, true);
             pointer_value = uptr.release();
         }
         ASSERT_EQ(value2 == *pointer_value, true);
+        delete pointer_value;
 
         int base = empty_deleter_2<T>::getCount();
         {
             up_emp2 uptr(new T(value1));
+            ASSERT_EQ(*uptr == value1, true);
             uptr.reset(new T(value2));
             ASSERT_EQ(*uptr == value2, true);
             pointer_value = uptr.release();
         }
         ASSERT_EQ(value2 == *pointer_value, true);
         ASSERT_EQ(empty_deleter_2<T>::getCount(), base + 2);
+        delete pointer_value;
 
         nonempty_deleter_1<T> deleter_nonempty;
         {
@@ -369,6 +373,7 @@ namespace unit_tests {
         }
         ASSERT_EQ(value1 == *pointer_value, true);
         ASSERT_EQ(deleter_nonempty.getCount(), 2);
+        delete pointer_value;
 
         {
             up_nemp2 uptr(new T(value2), nonempty_deleter_1<T>());
@@ -379,15 +384,16 @@ namespace unit_tests {
             ASSERT_EQ(uptr.get_deleter().getCount(), 1);
         }
         ASSERT_EQ(value1 == *pointer_value, true);
+        delete pointer_value;
     }
 
     TEST(UniquePtrTest, TestResetAndRelease) {
-        /* testResetAndReleaseTemplate<int>(5, -10); */
-        /* testResetAndReleaseTemplate<char>('a', 'b'); */
-        /* testResetAndReleaseTemplate<std::string>("hello", "world world world"); */
-        /* testResetAndReleaseTemplate<Test_FOO_Simple>(Test_FOO_Simple(18), Test_FOO_Simple(11)); */
-        /* testResetAndReleaseTemplate<Test_FOO_Array>(Test_FOO_Array(10), Test_FOO_Array(12)); */
-        /* testResetAndReleaseTemplate<Test_FOO_Heap>(Test_FOO_Heap(3), Test_FOO_Heap(9)); */
+        testResetAndReleaseTemplate<int>(5, -10);
+        testResetAndReleaseTemplate<char>('a', 'b');
+        testResetAndReleaseTemplate<std::string>("hello", "world world world");
+        testResetAndReleaseTemplate<Test_FOO_Simple>(Test_FOO_Simple(18), Test_FOO_Simple(11));
+        testResetAndReleaseTemplate<Test_FOO_Array>(Test_FOO_Array(10), Test_FOO_Array(12));
+        testResetAndReleaseTemplate<Test_FOO_Heap>(Test_FOO_Heap(3), Test_FOO_Heap(9));
     }
 
 

@@ -131,8 +131,19 @@ namespace my_stl {
 
     //non member function declarations
     template <typename _Tp, typename... Args>
-    unique_ptr<_Tp> make_unique(Args&&... args);
+    unique_ptr<_Tp> make_unique(Args&&... args) {
+        return unique_ptr<_Tp>(new _Tp(std::forward<Args>(args)...));
+    }
 
+    template <typename _Tp1, typename _Dp1, typename _Tp2, typename _Dp2>
+    bool operator==(const unique_ptr<_Tp1, _Dp1>& ptr1, const unique_ptr<_Tp1, _Dp1>& ptr2) {
+        return ptr1.get() == ptr2.get();
+    }
+
+    template <typename _Tp1, typename _Dp1, typename _Tp2, typename _Dp2>
+    bool operator!=(const unique_ptr<_Tp1, _Dp1>& ptr1, const unique_ptr<_Tp1, _Dp1>& ptr2) {
+        return ptr1.get() != ptr2.get();
+    }
     //unique_ptr---------------implementation
 
     //---------------------------------------------------------------------------
@@ -183,7 +194,7 @@ namespace my_stl {
     //****************************************************************************
 
     //---------------------------------------------------------------------------
-    //--------------------------operator overloading-----------------------------
+    //--------------------------Operator Overloading-----------------------------
     //---------------------------------------------------------------------------
     //copy assignment
     template <typename _Tp, typename _Dp>
@@ -234,6 +245,17 @@ namespace my_stl {
     }
 
     //Observers
+    template <typename _Tp, typename _Dp>
+    typename unique_ptr<_Tp, _Dp>::pointer
+    unique_ptr<_Tp, _Dp>::get() noexcept {
+        return __pair.first();
+    }
+
+    template <typename _Tp, typename _Dp>
+    typename unique_ptr<_Tp, _Dp>::const_pointer
+    unique_ptr<_Tp, _Dp>::get() const noexcept {
+        return __pair.first();
+    }
 
     template <typename _Tp, typename _Dp>
     typename unique_ptr<_Tp, _Dp>::deleter_type& 
@@ -245,6 +267,11 @@ namespace my_stl {
     const typename unique_ptr<_Tp, _Dp>::deleter_type& 
     unique_ptr<_Tp, _Dp>::get_deleter() const noexcept {
         return __pair.second();
+    }
+
+    template <typename _Tp, typename _Dp>
+    unique_ptr<_Tp, _Dp>::operator bool() const noexcept{
+        return get() != nullptr;
     }
 
     //--------------------------end of unique_ptr---------------------------------------
@@ -462,7 +489,6 @@ namespace my_stl {
             using base =  __compressed_pair_imp::compressed_pair<_Tp1, _Tp2>;
             using base::base;
     };
-
     //--------------------------end of compressed_pair----------------------------------
 } //my_stl
 #endif
