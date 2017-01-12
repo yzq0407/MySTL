@@ -1,4 +1,8 @@
 #include "test_objects.h"
+namespace {
+    const std::string base_label = "base";
+    const std::string derive_label = "derive";
+} //anonymous namespace
 
 Test_FOO_Simple::Test_FOO_Simple(): mi(0), mll(-1), mc('a') {
 }
@@ -125,5 +129,23 @@ const Test_FOO_Simple* Test_FOO_Heap::getSimpleObjectMember() const {
     return m2;
 }
 
+Test_FOO_Base::Test_FOO_Base(int _i, char _c):
+    member_int(_i), member_char(_c) {}
 
+std::string Test_FOO_Base::getLabel() const {
+    return base_label;
+}
 
+Test_FOO_Base::~Test_FOO_Base() = default;
+
+Test_FOO_Derive::Test_FOO_Derive(int _i, char _c):
+    Test_FOO_Base(_i, _c), member_long(0){}
+
+Test_FOO_Derive::Test_FOO_Derive(int _i, char _c, long _l):
+    Test_FOO_Base(_i, _c), member_long(_l) {}
+
+Test_FOO_Derive::~Test_FOO_Derive() = default;
+
+std::string Test_FOO_Derive::getLabel() const {
+    return derive_label;
+}

@@ -1,6 +1,7 @@
 #ifndef __M_TEST_OBJECTS_H
 #define __M_TEST_OBJECTS_H
 //bunch of object for testing, including several cases
+#include <string> //for std::string
 
 class Test_FOO_Simple {
     private:
@@ -69,5 +70,31 @@ class Test_FOO_Heap {
 
         const int* getIntMember() const;
         const Test_FOO_Simple* getSimpleObjectMember() const;
+};
+
+class Test_FOO_Base {
+    protected:
+        int member_int;
+    public:
+        char member_char;
+
+        Test_FOO_Base(int, char);
+
+        virtual ~Test_FOO_Base();
+
+        virtual std::string getLabel() const;
+};
+
+class Test_FOO_Derive: public Test_FOO_Base {
+    protected:
+        long member_long;
+    public:
+        Test_FOO_Derive(int, char);
+
+        Test_FOO_Derive(int, char, long);
+
+        virtual ~Test_FOO_Derive();
+
+        virtual std::string getLabel() const override;
 };
 #endif
