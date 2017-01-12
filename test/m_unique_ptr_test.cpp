@@ -416,4 +416,24 @@ namespace unit_tests {
         ASSERT_EQ(uptr_str->size(), 11);
     }
 
+    TEST(UniquePtrTest, TestPolymophism) {
+        my_stl::unique_ptr<Test_FOO_Base> base_ptr_1(new Test_FOO_Base(12, 'b'));
+        ASSERT_EQ(base_ptr_1->getLabel() == "base", true);
+        
+        my_stl::unique_ptr<Test_FOO_Base> base_ptr_2(new Test_FOO_Derive(6, 'z', 1024));
+        ASSERT_EQ(base_ptr_2->getLabel() == "derive", true);
+
+        my_stl::unique_ptr<Test_FOO_Base> base_ptr_3(new Test_FOO_Base(-10, '#'));
+
+        my_stl::unique_ptr<Test_FOO_Derive> derive_ptr_1(new Test_FOO_Derive(8, 'm', -1024));
+        ASSERT_EQ(derive_ptr_1->getLabel() == "derive", true);
+
+        //test move assignment
+        base_ptr_1 = std::move(base_ptr_2);
+        ASSERT_EQ(base_ptr_1->getLabel() == "derive", true);
+
+        base_ptr_3 = std::move(derive_ptr_1);
+        ASSERT_EQ(base_ptr_3->getLabel() == "derive", true);
+    }
+
 }// unit test

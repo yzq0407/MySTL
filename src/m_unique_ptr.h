@@ -22,6 +22,10 @@ namespace my_stl {
     struct default_delete {
         constexpr default_delete() noexcept = default;
 
+        //implicit conversion from other convertible class
+        template <typename _Up>
+        default_delete(const default_delete<_Up>& other) noexcept {}
+
         void operator()(_Tp* _ptr) const {
             delete _ptr;
         }
@@ -31,6 +35,9 @@ namespace my_stl {
     template <typename _Tp>
     struct default_delete<_Tp[]> {
         constexpr default_delete() noexcept = default;
+
+        template <typename _Up>
+        default_delete(const default_delete<_Up[]>& other) noexcept {}
 
         void operator()(_Tp* _ptr) const {
             delete[] _ptr;
