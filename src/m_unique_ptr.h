@@ -199,13 +199,16 @@ namespace my_stl {
 
     template <typename _Tp, typename _Dp>
     unique_ptr<_Tp, _Dp>::unique_ptr(unique_ptr&& _ptr) noexcept:
-        __pair(_ptr.release(), std::move(_ptr.get_deleter())) {
+        __pair(_ptr.release(), std::forward(_ptr.get_deleter())) {
+        //we have to use std::forward in this case
+        //since _Dp could be reference or plain type, if it is a reference type
+        //calling std::move will make the original referenced deleter undefined
         }
 
     template <typename _Tp, typename _Dp>
     template <typename _Up, typename _Ep>
     unique_ptr<_Tp, _Dp>::unique_ptr(unique_ptr<_Up, _Ep>&& _ptr) noexcept:
-    __pair(_ptr.release(), std::move(_ptr.get_deleter())) {
+    __pair(_ptr.release(), std::forward(_ptr.get_deleter())) {
     }
     //****************************************************************************
     //-------------------------End of Ctors---------------------------------------
@@ -218,7 +221,7 @@ namespace my_stl {
     template <typename _Tp, typename _Dp>
     unique_ptr<_Tp, _Dp>& unique_ptr<_Tp, _Dp>::operator=(unique_ptr&& _rhs) noexcept{
         reset(_rhs.release());
-        __pair.second() = std::move(_rhs.get_deleter());
+        __pair.second() = std::forward(_rhs.get_deleter());
         return *this;
     }
 
@@ -226,7 +229,7 @@ namespace my_stl {
     template <typename _Up, typename _Ep>
     unique_ptr<_Tp, _Dp>& unique_ptr<_Tp, _Dp>::operator=(unique_ptr<_Up, _Ep>&& _rhs) noexcept{
         reset(_rhs.release());
-        __pair.second() = std::move(_rhs.get_deleter());
+        __pair.second() = std::forward(_rhs.get_deleter());
         return *this;
     }
 

@@ -7,6 +7,7 @@
 #define __MY_STL_SMART_PTR_H
 
 #include "m_type_traits.h"
+#include "m_alloc.h"
 #include <utility>
 
 namespace my_stl {
@@ -548,19 +549,17 @@ namespace my_stl {
         private:
             long __shared_owners;
             long __weak_owners;
+            virtual void on_zero_weak() noexcept = 0;
+            virtual void on_zero_shared() noexcept = 0;
         public:
             constexpr explicit __ref_counter(long refs = 0);
             virtual ~__ref_counter();
-
             void add_shared() noexcept;
             void add_weak() noexcept;
             void release_shared() noexcept;
             void release_weak() noexcept;
             long shared_count() const noexcept;
             long weak_count() const noexcept;
-
-            virtual void on_zero_shared() noexcept = 0;
-            virtual void on_zero_weak() noexcept;
     };
 
     constexpr __ref_counter::__ref_counter(long refs):
@@ -596,8 +595,137 @@ namespace my_stl {
 
     //----------------------------control block------------------------------------------
     template <typename _Tp, typename _Dp, typename Alloc>
-    class __ctrl_blk: public __ref_counter{
+    class __ctrl_blk: public __ref_counter {
+        //control block is always allocated on the heap, for it to deallocate
+        //it has to 'commit suicide', that means, before it is destroied, it 
+        //has to explicitly call the dtors of its data member
+        private:
+            compressed_pair<compressed_pair<_Tp*, _Dp>, Alloc> _data;
+            virtual void on_zero_shared() noexcept override;
+            virtual void on_zero_weak() noexcept override;
+        public:
+            __ctrl_blk(_Tp* _ptr, _Dp _dp, Alloc alloc) noexcept;
+            virtual ~__ctrl_blk(); 
     };
+
+    template <typename _Tp, typename _Dp, typename Alloc>
+    __ctrl_blk<_Tp, _Dp, Alloc>::__ctrl_blk(_Tp* _ptr, _Dp _dp, Alloc alloc) noexcept: __ref_counter(0),
+        _data(compressed_pair<_Tp*, _Dp>(_ptr, std::forward<_Dp>(_dp)), std::forward<Alloc>(alloc)) {}
+
+    template <typename _Tp, typename _Dp, typename Alloc>
+    void __ctrl_blk<_Tp, _Dp, Alloc>::on_zero_shared() noexcept {
+        _data.first().second()(_data.first().first());
+        _data.first().second().~Dp();
+    }
+
+    template <typename _Tp, typename _Dp, typename Alloc>
+    void __ctrl_blk<_Tp, _Dp, Alloc>::on_zero_weak() noexcept {
+        _data.second().~Alloc();
+        //suicide
+        delete this;
+    }
+    //--------------------------end of control block-------------------------------------------
+
+    //--------------------------------shared_ptr--------------------------------------
+    template <typename _Tp>
+    class shared_ptr {
+    public:
+        using element_type = _Tp;
+        using weak_type = weak_ptr<_Tp>;
+    private:
+        element_type* _ptr;
+        //a control block pointer, to the abstract class
+        __ref_counter* _ctrl_ptr;
+
+    public:
+        //--------------------------------ctors----------------------------------------
+        constexpr shared_ptr() noexcept;
+        constexpr shared_ptr(std::nullptr_t) noexcept;
         
+        template <typename _Up>
+        explicit shared_ptr(_Up* pointer);
+
+        template <typename _Up, typename _Dp>
+        shared_ptr(_Up* pointer, _Dp deleter);
+
+        template <typename _Up, typename _Dp, typename Alloc>
+        shared_ptr(_Up* pointer, _Dp deleter, Alloc alloc);
+
+        template <typename _Dp, typename Alloc>
+        shared_ptr(std::nullptr_t pointer, _Dp deleter, Alloc alloc);
+
+        /* The aliasing constructor: constructs a shared_ptr which shares */ 
+        /* ownership information with r, but holds an unrelated and unmanaged pointer ptr. */ 
+        /* Even if this shared_ptr is the last of the group to go out of scope, */ 
+        /* it will call the destructor for the object originally managed by r. */ 
+        /* However, calling get() on this will always return a copy of ptr. */ 
+        /* It is the responsibility of the programmer to make sure that this ptr remains */ 
+        /* valid as long as this shared_ptr exists, such as in the typical use cases where */ 
+        /* ptr is a member of the object managed by r or is an alias (e.g., downcast) of r.get() */
+        template <typename _Up>
+        shared_ptr(const shared_ptr<_Up>& _other, element_type *ptr);
+
+        //copy
+        shared_ptr(const shared_ptr& _other);
+        shared_ptr(shared_ptr&& _other);
+        
+        template <typename _Up>
+        shared_ptr(const shared_ptr<_Up>& _other);
+
+        template <typename _Up>
+        shared_ptr(shared_ptr<_Up>&& _other);
+
+        //explicit from weak_ptr
+        template <typename _Up>
+        explicit shared_ptr(const weak_ptr<_Up>& _other);
+
+        //implicit from unique_ptr
+        template <typename _Up, typename _Dp>
+        shared_ptr(unique_ptr<_Up, _Dp>&& _other);
+
+        //-------------------------------dtor--------------------------------------------
+        ~shared_ptr();
+    };
+
+    template <typename _Tp>
+    constexpr shared_ptr<_Tp>::shared_ptr() noexcept: _ptr(nullptr),
+        _ctrl_ptr(nullptr){}
+
+    template <typename _Tp>
+    constexpr shared_ptr<_Tp>::shared_ptr(std::nullptr_t) noexcept: _ptr(nullptr),
+        _ctrl_ptr(nullptr){}
+
+    template <typename _Tp>
+    template <typename _Up>
+    shared_ptr<_Tp>::shared_ptr(_Up* pointer) {
+        //assumption is pointer is just initialized, to be exception safe, 
+        //use unique_ptr to hold it before allocating a control block
+        unique_ptr<_Up> hold(pointer);
+        _ptr = pointer;
+        _ctrl_ptr = new __ctrl_blk<_Tp, default_delete<_Tp>, allocator<_Tp>>(
+                pointer, default_delete<_Tp>(), allocator<_Tp>());
+        hold.release();
+
+    }
+
+    template <typename _Tp>
+    template <typename _Up, typename _Dp>
+    shared_ptr<_Tp>::shared_ptr(_Up* pointer, _Dp deleter) {
+        //be exception safe
+        unique_ptr<_Up> hold(pointer);
+        _ptr = pointer;
+        _ctrl_ptr = new __ctrl_blk<_Tp, _Dp, allocator<_Tp>>(pointer, deleter, allocator<_Tp>());
+        hold.release();
+    }
+
+    template <typename _Tp>
+    template <typename _Up, typename _Dp, typename Alloc>
+    shared_ptr<_Tp>::shared_ptr(_Up* pointer, _Dp deleter, Alloc allocator) {
+        unique_ptr<_Up> hold(pointer);
+        _ptr = pointer;
+        _ctrl_ptr = new __ctrl_blk<_Tp, _Dp, Alloc> (pointer, deleter, allocator);
+        hold.release;
+    }
+    //----------------------------------end of shared_ptr---------------------------------
 } //my_stl
 #endif
