@@ -651,6 +651,9 @@ namespace my_stl {
         template <typename _Up, typename _Dp, typename Alloc>
         shared_ptr(_Up* pointer, _Dp deleter, Alloc alloc);
 
+        template <typename _Dp>
+        shared_ptr(std::nullptr_t pointer, _Dp deleter);
+
         template <typename _Dp, typename Alloc>
         shared_ptr(std::nullptr_t pointer, _Dp deleter, Alloc alloc);
 
@@ -697,34 +700,93 @@ namespace my_stl {
 
     template <typename _Tp>
     template <typename _Up>
-    shared_ptr<_Tp>::shared_ptr(_Up* pointer) {
+    shared_ptr<_Tp>::shared_ptr(_Up* pointer):_ptr(pointer) {
         //assumption is pointer is just initialized, to be exception safe, 
         //use unique_ptr to hold it before allocating a control block
         unique_ptr<_Up> hold(pointer);
-        _ptr = pointer;
         _ctrl_ptr = new __ctrl_blk<_Tp, default_delete<_Tp>, allocator<_Tp>>(
                 pointer, default_delete<_Tp>(), allocator<_Tp>());
         hold.release();
-
     }
 
     template <typename _Tp>
     template <typename _Up, typename _Dp>
-    shared_ptr<_Tp>::shared_ptr(_Up* pointer, _Dp deleter) {
+    shared_ptr<_Tp>::shared_ptr(_Up* pointer, _Dp deleter):_ptr(pointer) {
         //be exception safe
         unique_ptr<_Up> hold(pointer);
-        _ptr = pointer;
         _ctrl_ptr = new __ctrl_blk<_Tp, _Dp, allocator<_Tp>>(pointer, deleter, allocator<_Tp>());
         hold.release();
     }
 
     template <typename _Tp>
     template <typename _Up, typename _Dp, typename Alloc>
-    shared_ptr<_Tp>::shared_ptr(_Up* pointer, _Dp deleter, Alloc allocator) {
+    shared_ptr<_Tp>::shared_ptr(_Up* pointer, _Dp deleter, Alloc allocator): _ptr(pointer) {
         unique_ptr<_Up> hold(pointer);
-        _ptr = pointer;
         _ctrl_ptr = new __ctrl_blk<_Tp, _Dp, Alloc> (pointer, deleter, allocator);
-        hold.release;
+        hold.release();
+    }
+
+    template <typename _Tp>
+    template <typename _Dp>
+    shared_ptr<_Tp>::shared_ptr(std::nullptr_t pointer, _Dp deleter): _ptr(nullptr) {
+        try {
+            _ctrl_ptr = new __ctrl_blk<std::nullptr_t, _Dp, allocator<_Tp>>(pointer, deleter, allocator<_Tp>());
+        }
+        catch (...) {
+            deleter(pointer);
+            throw;
+        }
+    }
+
+    template <typename _Tp>
+    template <typename _Dp, typename Alloc>
+    shared_ptr<_Tp>::shared_ptr(std::nullptr_t pointer, _Dp deleter, Alloc alloc): _ptr(nullptr) {
+        try {
+            _ctrl_ptr = new __ctrl_blk<std::nullptr_t, _Dp, Alloc>(pointer, deleter, alloc);
+        }
+        catch (...) {
+            deleter(pointer);
+            throw;
+        }
+    }
+
+    //alias construction, see explanation
+    template <typename _Tp>
+    template <typename _Up>
+    shared_ptr<_Tp>::shared_ptr(const shared_ptr<_Up>& _other, element_type *ptr): _ptr(ptr),
+        _ctrl_ptr(_other._ctrl_ptr) {
+        if (_ctrl_ptr) 
+            _ctrl_ptr->add_shared();
+    }
+
+    //copy construction
+    template <typename _Tp>
+    shared_ptr<_Tp>::shared_ptr(const shared_ptr<_Tp>& _other): _ptr(_other._ptr),
+        _ctrl_ptr(_other._ctrl_ptr) {
+        if (_ctrl_ptr)
+             _ctrl_ptr->add_shared();
+    }
+
+    template <typename _Tp>
+    template <typename _Up>
+    shared_ptr<_Tp>::shared_ptr(const shared_ptr<_Up>& _other): _ptr(_other._ptr), 
+        _ctrl_ptr(_other._ctrl_ptr) {
+        if (_ctrl_ptr)
+            _ctrl_ptr->add_shared();
+    }
+
+    //move construction
+    template <typename _Tp>
+    shared_ptr<_Tp>::shared_ptr(shared_ptr&& _other): _ptr(_other._ptr),
+        _ctrl_ptr(_other._ctrl_ptr) {
+        _other._ptr = _other._ctrl_ptr = nullptr;
+    }
+
+    template <typename _Tp>
+    template <typename _Up>
+    shared_ptr<_Tp>::shared_ptr(shared_ptr<_Up>&& _other): _ptr(_other._ptr),
+        _ctrl_ptr(_other._ctrl_ptr) {
+        _ptr = _ctrl_ptr = nullptr;
     }
     //----------------------------------end of shared_ptr---------------------------------
 } //my_stl
