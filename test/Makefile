@@ -23,5 +23,9 @@ m_unique_ptr_test.o: m_unique_ptr_test.cpp ../src/m_unique_ptr.h
 
 test_objects.o: test_objects.h test_objects.cpp
 	$(CC) $(CFLAGS) -c test_objects.cpp
+
+.PHONY: clean cleanobj
 clean:
-	rm $(EXECUTABLES) $(OBJECTS)
+	-rm $(EXECUTABLES) $(OBJECTS)
+cleanobj:
+	-rm $(OBJECTS)
